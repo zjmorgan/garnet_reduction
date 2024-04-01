@@ -1,0 +1,6 @@
+{
+    "IPTS": "31429",
+    "Runs": "324246",
+    "DetectorCalibration": "/SNS/CORELLI/shared/calibration/2022A/calibration.xml",
+    "TubeCalibration": "/SNS/CORELLI/shared/calibration/tube/calibration_corelli_20200109.nxs.h5"
+}
