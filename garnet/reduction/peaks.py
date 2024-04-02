@@ -189,25 +189,27 @@ class PeaksModel:
         """
         Predict peak Q-sample locations with UB and lattice centering.
 
-        +--------+
-        | P      |
-        +--------+
-        | I      |
-        +--------+
-        | F      |
-        +--------+
-        | R      |
-        +--------+
-        | R(obv) |
-        +--------+
-        | R(rev) |
-        +--------+
-        | A      |
-        +--------+
-        | B      |
-        +--------+
-        | C      |
-        +--------+
+        +--------+-----------------------+
+        | Symbol | Reflection condition  |
+        +========+=======================+
+        | P      | None                  |
+        +--------+-----------------------+
+        | I      | :math:`h+k+l=2n`      |
+        +--------+-----------------------+
+        | F      | :math:`h,k,l` unmixed |
+        +--------+-----------------------+
+        | R      | None                  |
+        +--------+-----------------------+
+        | R(obv) | :math:`-h+k+l=3n`     |
+        +--------+-----------------------+
+        | R(rev) | :math:`h-k+l=3n`      |
+        +--------+-----------------------+
+        | A      | :math:`k+l=2n`        |
+        +--------+-----------------------+
+        | B      | :math:`l+h=2n`        |
+        +--------+-----------------------+
+        | C      | :math:`h+k=2n`        |
+        +--------+-----------------------+
 
         Parameters
         ----------
@@ -234,7 +236,7 @@ class PeaksModel:
                      EdgePixels=self.edge_pixels,
                      OutputWorkspace=peaks)
 
-    def predict_satellite_peaks(self, peaks,
+    def predict_modulated_peaks(self, peaks,
                                       d_min,
                                       mod_vec_1=[0,0,0],
                                       mod_vec_2=[0,0,0],
