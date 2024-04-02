@@ -8,6 +8,7 @@ from mantid.simpleapi import (FindPeaksMD,
                               FilterPeaks,
                               SortPeaksWorkspace,
                               DeleteWorkspace,
+                              DeleteTableRows,
                               HasUB,
                               mtd)
 
@@ -29,7 +30,7 @@ class PeaksModel:
 
         self.edge_pixels = 0
 
-    def find_peaks(self, md, 
+    def find_peaks(self, md,
                          peaks,
                          max_d,
                          density=1000,
@@ -87,7 +88,8 @@ class PeaksModel:
                               background_outer_fact=1.5,
                               method='sphere'):
         """
-        Intgrate peaks using spherical or ellipsoidal regions.
+        Integrate peaks using spherical or ellipsoidal regions.
+        Ellipsoid integration adapts itself to the peak distribution.
 
         Parameters
         ----------
@@ -153,7 +155,7 @@ class PeaksModel:
 
         PeakIntensityVsRadius(InputWorkspace=md,
                               PeaksWorkspace=peaks,
-                              RadiusStart=0.0, 
+                              RadiusStart=0.0,
                               RadiusEnd=peak_radius,
                               NumSteps=steps,
                               BackgroundInnerFactor=background_inner_fact,
@@ -163,7 +165,7 @@ class PeaksModel:
 
     def get_max_d_spacing(self, ws):
         """
-        Obtain the maximum d-spacing from the oriented lattice.s
+        Obtain the maximum d-spacing from the oriented lattice.
 
         Parameters
         ----------
@@ -180,13 +182,13 @@ class PeaksModel:
         if HasUB(Workspace=ws):
 
             ol = mtd[ws].sample().getOrientedLattice()
-    
+
             return max([ol.a(), ol.b(), ol.c()])
 
-    def predict_peaks(self, ws, centering, d_min):
+    def predict_peaks(self, ws, peaks, centering, d_min):
         """
-        Predict peak Q-sample with UB and lattice reflection conditions.
-        
+        Predict peak Q-sample locations with UB and lattice centering.
+
         +--------+
         | P      |
         +--------+
@@ -211,6 +213,8 @@ class PeaksModel:
         ----------
         ws : str
             Name of workspace to predict peaks with UB.
+        peaks : str
+            Name of peaks table.
         centering : str
             Lattice centering that provides the reflection condition.
         d_min : float
@@ -228,7 +232,7 @@ class PeaksModel:
                      ReflectionCondition=refl_cond_dict[centering],
                      RoundHKL=True,
                      EdgePixels=self.edge_pixels,
-                     OutputWorkspace='predict')
+                     OutputWorkspace=peaks)
 
     def predict_satellite_peaks(self, peaks,
                                       d_min,
@@ -298,3 +302,56 @@ class PeaksModel:
                            ColumnNameToSortBy='DSpacing',
                            SortAscending=False,
                            OutputWorkspace=peaks)
+
+    def remove_duplicate_peaks(self, peaks):
+        """
+        Omit duplicate peaks from different based on indexing.
+        Table will be sorted.
+
+        Parameters
+        ----------
+        peaks : str
+            Name of peaks table.
+
+        """
+
+        self.sort_peaks_by_hkl(peaks)
+
+        for no in range(mtd[peaks].getNumberPeaks()-1,0,-1):
+
+            if (mtd[peaks].getPeak(no).getHKL()-\
+                mtd[peaks].getPeak(no-1).getHKL()).norm2() == 0:
+
+                DeleteTableRows(TableWorkspace=peaks, Rows=no)
+
+    def renumber_runs_by_index(self, ws, peaks):
+        """
+        Re-label the runs by index based on goniometer setting.
+
+        Parameters
+        ----------
+        ws : str
+            Name of workspace with goniometer indexing.
+        peaks : str
+            Name of peaks table.
+
+        """
+
+        run = mtd[ws].getExperimentInfo(0).run()
+
+        n_gon = run.getNumGoniometers()
+
+        Rs = np.array([run.getGoniometer(i).getR() for i in range(n_gon)])
+
+        for no in range(mtd[peaks].getNumberPeaks()):
+
+            peak = mtd[peaks].getPeak(no)
+
+            R = peak.getGoniometerMatrix()
+
+            ind = np.isclose(Rs, R).all(axis=(1,2))
+            i = -1 if not np.any(ind) else ind.tolist().index(True)
+
+            peak.setRunNumber(i+1)
+
+

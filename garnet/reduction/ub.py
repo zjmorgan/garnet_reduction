@@ -5,20 +5,23 @@ from mantid.simpleapi import (SelectCellWithForm,
                               IndexPeaks,
                               FindUBUsingFFT,
                               FindUBUsingLatticeParameters,
-                              FindUBUsingIndexedPeaks,                              
+                              FindUBUsingIndexedPeaks,
                               OptimizeLatticeForCellType,
                               CalculateUMatrix,
                               HasUB,
+                              SetUB,
                               LoadIsawUB,
                               SaveIsawUB,
                               CopySample,
                               mtd)
 
 from mantid.geometry import PointGroupFactory
-
 from mantid.utils.logging  import capture_logs
 
 import numpy as np
+
+import scipy.spatial
+import scipy.optimize
 
 lattice_group = {'Triclinic': '-1',
                  'Monoclinic': '2/m',
@@ -74,7 +77,7 @@ class UBModel():
             Name of UB file with extension .mat.
 
         """
-        
+
         LoadIsawUB(InputWorkspace=self.peaks, Filename=filename)
 
     def determine_UB_with_niggli_cell(self, min_d, max_d, tol=0.1):
@@ -92,12 +95,12 @@ class UBModel():
 
         """
 
-        FindUBUsingFFT(PeaksWorkspace=self.peaks, 
+        FindUBUsingFFT(PeaksWorkspace=self.peaks,
                        MinD=min_d,
                        MaxD=max_d,
                        Tolerance=tol)
 
-    def determine_UB_with_lattice_parameters(self, a, 
+    def determine_UB_with_lattice_parameters(self, a,
                                                    b,
                                                    c,
                                                    alpha,
@@ -118,7 +121,7 @@ class UBModel():
 
         """
 
-        FindUBUsingLatticeParameters(PeaksWorkspace=self.peaks, 
+        FindUBUsingLatticeParameters(PeaksWorkspace=self.peaks,
                                      a=a,
                                      b=b,
                                      c=c,
@@ -149,7 +152,7 @@ class UBModel():
     def refine_UB_with_constraints(self, cell, tol=0.1):
         """
         Refine UB with constraints corresponding to lattice system.
-        
+
         +--------------+
         | Cubic        |
         +--------------+
@@ -193,7 +196,7 @@ class UBModel():
 
         """
 
-        CalculateUMatrix(PeaksWorkspace=self.peaks, 
+        CalculateUMatrix(PeaksWorkspace=self.peaks,
                          a=a,
                          b=b,
                          c=c,
@@ -213,7 +216,7 @@ class UBModel():
             Indexing tolerance. The default is 0.1.
 
         """
-        
+
         SelectCellWithForm(PeaksWorkspace=self.peaks,
                            FormNumber=number,
                            Apply=True,
@@ -251,7 +254,7 @@ class UBModel():
 
     def transform_lattice(self, transform, tol=0.1):
         """
-        Apply a cell transformation to the lattice.        
+        Apply a cell transformation to the lattice.
 
         Parameters
         ----------
@@ -263,7 +266,7 @@ class UBModel():
         """
 
         hkl_trans = ','.join(['{},{},{}'.format(*row) for row in transform])
-        
+
         TransformHKL(PeaksWorkspace=self.peaks,
                      Tolerance=tol,
                      HKLTransform=hkl_trans)
@@ -284,7 +287,7 @@ class UBModel():
 
         """
 
-        symbol = lattice_group[cell]        
+        symbol = lattice_group[cell]
 
         pg = PointGroupFactory.createPointGroup(symbol)
 
@@ -350,10 +353,10 @@ class UBModel():
         Calculate hkl values without rounding.
 
         """
-    
+
         CalculatePeaksHKL(PeaksWorkspace=self.peaks,
                           OverWrite=True)
-    
+
     def copy_UB(self, workspace):
         """
         Copy UB to another workspace.
@@ -371,3 +374,225 @@ class UBModel():
                    CopyMaterial=False,
                    CopyEnvironment=False,
                    CopyShape=False)
+
+
+class Optimization:
+
+    def __init__(self, peaks):
+        """
+        Optimize lattice and orientation using nonlinear least squares.
+
+        Parameters
+        ----------
+        peaks : str
+            Name of peaks workspace to perform constrained UB optimization.
+
+        """
+
+        Q, hkl = [], []
+
+        for pk in mtd[peaks]:
+
+            hkl.append(pk.getHKL())
+            Q.append(pk.getQSampleFrame())
+
+        self.Q, self.hkl = np.array(Q), np.array(hkl)
+
+        self.peaks = peaks
+
+    def get_lattice_parametes(self):
+        """
+        Current lattice parameters.
+
+        Returns
+        -------
+        a, b, c : float
+            Lattice constants in ansgroms.
+        alpha, beta, gamma : float
+            Lattice angles in degrees.
+
+        """
+
+        if mtd.doesExist(self.peaks):
+
+            ol = mtd[self.peaks].sample().getOrientedLattice()
+
+            a, b, c = ol.a(), ol.b(), ol.c()
+            alpha, beta, gamma = ol.alpha(), ol.beta(), ol.gamma()
+
+            return a, b, c, alpha, beta, gamma
+
+    def get_orientation_angles(self):
+
+        if mtd.doesExist(self.peaks):
+
+            U = mtd[self.peaks].sample().getOrientedLattice().getU()
+
+            omega = np.arccos((np.trace(U)-1)/2)
+    
+            val, vec = np.linalg.eig(U)
+    
+            ux, uy, uz = vec[:,np.argwhere(np.isclose(val, 1))[0][0]].real
+    
+            theta = np.arccos(uz)
+            phi = np.arctan2(uy, ux)
+
+            return phi, theta, omega
+
+    def U_matrix(self, phi, theta, omega):
+
+        u0 = np.cos(phi)*np.sin(theta)
+        u1 = np.sin(phi)*np.sin(theta)
+        u2 = np.cos(theta)
+
+        w = omega*np.array([u0,u1,u2])
+
+        U = scipy.spatial.transform.Rotation.from_rotvec(w).as_matrix()
+
+        return U
+
+    def B_matrix(self, a, b, c, alpha, beta, gamma):
+
+        alpha, beta, gamma = np.deg2rad([alpha, beta, gamma])
+
+        G = np.array([[a**2, a*b*np.cos(gamma), a*c*np.cos(beta)],
+                      [b*a*np.cos(gamma), b**2, b*c*np.cos(alpha)],
+                      [c*a*np.cos(beta), c*b*np.cos(alpha), c**2]])
+
+        B = scipy.linalg.cholesky(np.linalg.inv(G), lower=False)
+
+        return B
+
+    def cubic(self, x):
+
+        a, *params = x
+
+        return (a, a, a, 90, 90, 90, *params)
+
+    def rhombohedral(self, x):
+
+        a, alpha, *params = x
+
+        return (a, a, a, alpha, alpha, alpha, *params)
+
+    def tetragonal(self, x):
+
+        a, c, *params = x
+
+        return (a, a, c, 90, 90, 90, *params)
+
+    def hexagonal(self, x):
+
+        a, c, *params = x
+
+        return (a, a, c, 90, 90, 120, *params)
+
+    def orthorhombic(self, x):
+
+        a, b, c, *params = x
+
+        return (a, b, c, 90, 90, 90, *params)
+
+    def monoclinic(self, x):
+
+        a, b, c, beta, *params = x
+
+        return (a, b, c, 90, beta, np.pi/2, *params)
+
+    def triclinic(self, x):
+
+        a, b, c, alpha, beta, gamma, *params = x
+
+        return (a, b, c, alpha, beta, gamma, *params)
+
+    def residual(self, x, hkl, Q, fun):
+
+        a, b, c, alpha, beta, gamma, phi, theta, omega = fun(x)
+
+        B = self.B_matrix(a, b, c, alpha, beta, gamma)
+        U = self.U_matrix(phi, theta, omega)
+
+        UB = np.dot(U,B)
+
+        return (np.einsum('ij,lj->li', UB, hkl)*2*np.pi-Q).flatten()
+
+    def optimize_lattice(self, cell):
+        """
+        Refine the orientation and lattice parameters under constraints.
+
+        Parameters
+        ----------
+        cell : str
+            Lattice centering to constrain paramters.
+
+        """
+
+        if mtd.doesExist(self.peaks):        
+
+            a, b, c, alpha, beta, gamma = self.get_lattice_parameters()
+            
+            phi, theta, omega = self.get_orientation_angles()
+    
+            fun_dict = {'Cubic': self.cubic,
+                        'Rhombohedral': self.rhombohedral,
+                        'Tetragonal': self.tetragonal,
+                        'Hexagonal': self.hexagonal,
+                        'Orthorhombic': self.orthorhombic,
+                        'Monoclinic': self.monoclinic,
+                        'Triclinic': self.triclinic}
+    
+            x0_dict = {'Cubic': (a, ),
+                       'Rhombohedral': (a, alpha),
+                       'Tetragonal': (a, c),
+                       'Hexagonal': (a, c),
+                       'Orthorhombic': (a, b, c),
+                       'Monoclinic': (a, b, c, beta),
+                       'Triclinic': (a, b, c, alpha, beta, gamma)}
+    
+            fun = fun_dict[cell]
+            x0 = x0_dict[cell]
+    
+            x0 += (phi, theta, omega)
+            args = (self.hkl, self.Q, fun)
+    
+            sol = scipy.optimize.least_squares(self.residual, x0=x0, args=args)
+    
+            a, b, c, alpha, beta, gamma, phi, theta, omega = fun(sol.x)
+    
+            B = self.B_matrix(a, b, c, alpha, beta, gamma)
+            U = self.U_matrix(phi, theta, omega)
+    
+            UB = np.dot(U, B)
+    
+            J = sol.jac
+            cov = np.linalg.inv(J.T.dot(J))
+    
+            chi2dof = np.sum(sol.fun**2)/(sol.fun.size-sol.x.size)
+            cov *= chi2dof
+    
+            sig = np.sqrt(np.diagonal(cov))
+    
+            sig_a, sig_b, sig_c, sig_alpha, sig_beta, sig_gamma, *_ = fun(sig)
+    
+            if np.isclose(a, sig_a):
+                sig_a = 0
+            if np.isclose(b, sig_b):
+                sig_b = 0
+            if np.isclose(c, sig_c):
+                sig_c = 0
+    
+            if np.isclose(alpha, sig_alpha):
+                sig_alpha = 0
+            if np.isclose(beta, sig_beta):
+                sig_beta = 0
+            if np.isclose(gamma, sig_gamma):
+                sig_gamma = 0
+    
+            SetUB(Workspace=self.peaks, UB=UB)
+    
+            mtd[self.peaks].sample().getOrientedLattice().setError(sig_a,
+                                                                   sig_b,
+                                                                   sig_c,
+                                                                   sig_alpha,
+                                                                   sig_beta,
+                                                                   sig_gamma)
