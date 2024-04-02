@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 from garnet.reduction.plan import ReductionPlan
 
@@ -9,9 +10,9 @@ def test_runs():
     garnet_plan = ReductionPlan()
 
     assert garnet_plan.plan is None
-    
+
     run_str = '345:347,349,350:352'
-    
+
     runs = garnet_plan.runs_string_to_list(run_str)
 
     assert runs == [345, 346, 347, 349, 350, 351, 352]
@@ -21,13 +22,33 @@ def test_runs():
 def test_load_plan():
 
     garnet_plan = ReductionPlan()
-    
+
     reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.json')
-    
+
     garnet_plan.load_plan(reduction_plan)
-    
-    plan = garnet_plan.plan 
+
+    plan = garnet_plan.plan
 
     assert plan is not None
 
     assert os.path.splitext(plan['DetectorCalibration'])[1] == '.xml'
+
+def test_save_plan():
+
+    garnet_plan = ReductionPlan()
+
+    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.json')
+
+    garnet_plan.load_plan(reduction_plan)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+
+        tmp_plan = os.path.join(tmpdir, 'tmp_plan.json')
+
+        garnet_plan.save_plan(tmp_plan)
+
+        tmp_garnet_plan = ReductionPlan()
+
+        tmp_garnet_plan.load_plan(tmp_plan)
+        
+        garnet_plan.plan == tmp_garnet_plan.plan

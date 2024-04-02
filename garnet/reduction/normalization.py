@@ -1,5 +1,5 @@
 class Normalization:
-    
+
     def __init__(self, reduction_plan, norm_plan):
 
         self.reduction_plan = reduction_plan

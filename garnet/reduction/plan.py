@@ -37,7 +37,7 @@ class ReductionPlan:
             with open(filename, 'w') as f:
 
                 json.dump(self.plan, f, indent=4)
-    
+
     def runs_string_to_list(self, runs_str):
         """
         Convert runs string to list.
@@ -82,7 +82,7 @@ class ReductionPlan:
 
         if not runs:
             return ''
-    
+
         runs.sort()
         result = []
         range_start = runs[0]
@@ -94,7 +94,7 @@ class ReductionPlan:
                 else:
                     result.append('{}:{}'.format(range_start, runs[i-1]))
                 range_start = runs[i]
-        
+
         if range_start == runs[-1]:
             result.append(str(range_start))
         else:

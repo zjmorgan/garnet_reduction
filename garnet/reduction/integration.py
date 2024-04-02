@@ -4,6 +4,15 @@ import scipy.spatial.transform
 
 from lmfit import Minimizer, Parameters
 
+class Integration:
+    
+    def __init__(self, reduction_plan, integration_plan):
+
+        self.reduction_plan = reduction_plan
+        self.integration_plan = integration_plan
+
+
+
 class PeakEllipsoid:
 
     def __init__(self, c0, c1, c2, r0, r1, r2, v0, v1, v2):
