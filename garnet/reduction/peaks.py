@@ -163,7 +163,7 @@ class PeaksModel:
 
     def get_max_d_spacing(self, ws):
         """
-        
+        Obtain the maximum d-spacing from the oriented lattice.s
 
         Parameters
         ----------
@@ -183,7 +183,40 @@ class PeaksModel:
     
             return max([ol.a(), ol.b(), ol.c()])
 
-    def predict_peaks(self, ws, refl_cond, d_min):
+    def predict_peaks(self, ws, centering, d_min):
+        """
+        Predict peak Q-sample with UB and lattice reflection conditions.
+        
+        +--------+
+        | P      |
+        +--------+
+        | I      |
+        +--------+
+        | F      |
+        +--------+
+        | R      |
+        +--------+
+        | R(obv) |
+        +--------+
+        | R(rev) |
+        +--------+
+        | A      |
+        +--------+
+        | B      |
+        +--------+
+        | C      |
+        +--------+
+
+        Parameters
+        ----------
+        ws : str
+            Name of workspace to predict peaks with UB.
+        centering : str
+            Lattice centering that provides the reflection condition.
+        d_min : float
+            The lower d-spacing resolution to predict peaks.
+
+        """
 
         d_max = self.get_max_d_spacing(ws)
 
@@ -192,7 +225,7 @@ class PeaksModel:
                      WavelengthMax=self.wl_max,
                      MinDSpacing=d_min,
                      MaxDSpacing=d_max*1.2,
-                     ReflectionCondition=refl_cond_dict[refl_cond],
+                     ReflectionCondition=refl_cond_dict[centering],
                      RoundHKL=True,
                      EdgePixels=self.edge_pixels,
                      OutputWorkspace='predict')
@@ -218,6 +251,7 @@ class PeaksModel:
                               CrossTerms=cross_terms,
                               SaveModulationInfo=True,
                               IncludeIntegerHKL=False,
+                              IncludeAllPeaksInRange=True,
                               WavelengthMin=self.wl_min,
                               WavelengthMax=self.wl_max,
                               MinDSpacing=d_min,

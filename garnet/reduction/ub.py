@@ -270,7 +270,7 @@ class UBModel():
 
     def generate_lattice_transforms(self, cell):
         """
-        Obtain poss
+        Obtain possible transforms compatabile with a unit cell lattice.
 
         Parameters
         ----------
