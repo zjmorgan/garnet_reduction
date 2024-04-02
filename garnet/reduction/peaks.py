@@ -1,25 +1,24 @@
-from mantid.simpleapi import (SetGoniometer,
-                              FindPeaksMD,
+from mantid.simpleapi import (FindPeaksMD,
                               PredictPeaks,
                               PredictSatellitePeaks,
                               CentroidPeaksMD,
                               IntegratePeaksMD,
-                              AddPeakHKL,
                               PeakIntensityVsRadius,
                               CombinePeaksWorkspace,
                               FilterPeaks,
                               SortPeaksWorkspace,
                               DeleteWorkspace,
+                              HasUB,
                               mtd)
 
 import numpy as np
 
-refl_cond_dict = {'P': 'Primitive', 
+refl_cond_dict = {'P': 'Primitive',
                   'I': 'Body centred',
                   'F': 'All-face centred',
-                  'R': 'Rhombohderally centred, obverse',
-                  'R(obv)': 'Rhombohderally centred, obverse',
-                  'R(rev)': 'Rhombohderally centred, reverse',
+                  'R': 'Primitive', # rhombohedral axes
+                  'R(obv)': 'Rhombohderally centred, obverse', # hexagonal axes
+                  'R(rev)': 'Rhombohderally centred, reverse', # hexagonal axes
                   'A': 'A-face centred',
                   'B': 'B-face centred',
                   'C': 'C-face centred'}
@@ -32,9 +31,26 @@ class PeaksModel:
 
     def find_peaks(self, md, 
                          peaks,
-                         max_d=15,
+                         max_d,
                          density=1000,
                          max_peaks=50):
+        """
+        Harvest strong peak locations from Q-sample into a peaks table.
+
+        Parameters
+        ----------
+        md : str
+            Name of Q-sample.
+        peaks : str
+            Name of peaks table.
+        max_d : float
+            Maxium d-spacing enforcing lower limit of peak spacing.
+        density : int, optional
+            Threshold density. The default is 1000.
+        max_peaks : int, optional
+            Maximum number of peaks to find. The default is 50.
+
+        """
 
         FindPeaksMD(InputWorkspace=md,
                     PeakDistanceTreshhold=2*np.pi/max_d,
@@ -45,6 +61,19 @@ class PeaksModel:
                     OutputWorkspace=peaks)
 
     def centroid_peaks(self, md, peaks, peak_radius):
+        """
+        Re-center peak locations using centroid within given radius
+
+        Parameters
+        ----------
+        md : str
+            Name of Q-sample.
+        peaks : str
+            Name of peaks table.
+        peak_radius : float
+            Integration region radius.
+
+        """
 
         CentroidPeaksMD(InputWorkspace=md,
                         PeakRadius=peak_radius,
@@ -54,9 +83,28 @@ class PeaksModel:
     def integrate_peaks(self, md,
                               peaks,
                               peak_radius,
-                              background_inner_fact=0,
-                              background_outer_fact=0,
+                              background_inner_fact=1,
+                              background_outer_fact=1.5,
                               method='sphere'):
+        """
+        Intgrate peaks using spherical or ellipsoidal regions.
+
+        Parameters
+        ----------
+        md : str
+            Name of Q-sample.
+        peaks : str
+            Name of peaks table.
+        peak_radius : float
+            Integration region radius.
+        background_inner_fact : float, optional
+            Factor of peak radius for background shell. The default is 1.
+        background_outer_fact : float, optional
+            Factor of peak radius for background shell. The default is 1.5.
+        method : str, optional
+            Integration method. The default is 'sphere'.
+
+        """
 
         background_inner_radius = peak_radius*background_inner_fact
         background_outer_radius = peak_radius*background_outer_fact
@@ -67,7 +115,7 @@ class PeaksModel:
                          BackgroundInnerRadius=background_inner_radius,
                          BackgroundOuterRadius=background_outer_radius,
                          Ellipsoid=True if method == 'ellipsoid' else False,
-                         FixQAxis=True,
+                         FixQAxis=False,
                          FixMajorAxisLength=False,
                          UseCentroid=True,
                          MaxIterations=3,
@@ -80,9 +128,28 @@ class PeaksModel:
     def intensity_vs_radius(self, md,
                                   peaks,
                                   peak_radius,
-                                  background_inner_fact=0,
-                                  background_outer_fact=0,
+                                  background_inner_fact=1,
+                                  background_outer_fact=1.5,
                                   steps=51):
+        """
+        Integrate peak intensity with radius varying from zero to cut off.
+
+        Parameters
+        ----------
+        md : str
+            Name of Q-sample.
+        peaks : str
+            Name of peaks table.
+        peak_radius : float
+            Integrat region radius cut off.
+        background_inner_fact : float, optional
+            Factor of peak radius for background shell. The default is 1.
+        background_outer_fact : float, optional
+            Factor of peak radius for background shell. The default is 1.5.
+        steps : int, optional
+            Number of integration steps. The default is 51.
+
+        """
 
         PeakIntensityVsRadius(InputWorkspace=md,
                               PeaksWorkspace=peaks,
@@ -91,13 +158,30 @@ class PeaksModel:
                               NumSteps=steps,
                               BackgroundInnerFactor=background_inner_fact,
                               BackgroundOuterFactor=background_outer_fact,
-                              OutputWorkspace='peak_vs_rad')
+                              OutputWorkspace=peaks+'_intens_vs_rad',
+                              OutputWorkspace2=peaks+'_sig/noise_vs_rad')
 
     def get_max_d_spacing(self, ws):
+        """
+        
 
-        ol = mtd[ws].sample().getOrientedLattice()       
+        Parameters
+        ----------
+        ws : str
+            Workspace with UB defined on oriented lattice.
 
-        return max([ol.a(), ol.b(), ol.c()])
+        Returns
+        -------
+        d_max : float
+            Maximum d-spacing.
+
+        """
+
+        if HasUB(Workspace=ws):
+
+            ol = mtd[ws].sample().getOrientedLattice()
+    
+            return max([ol.a(), ol.b(), ol.c()])
 
     def predict_peaks(self, ws, refl_cond, d_min):
 
@@ -107,7 +191,7 @@ class PeaksModel:
                      WavelengthMin=self.wl_min,
                      WavelengthMax=self.wl_max,
                      MinDSpacing=d_min,
-                     MaxDSpacing=d_max,
+                     MaxDSpacing=d_max*1.2,
                      ReflectionCondition=refl_cond_dict[refl_cond],
                      RoundHKL=True,
                      EdgePixels=self.edge_pixels,
@@ -137,7 +221,7 @@ class PeaksModel:
                               WavelengthMin=self.wl_min,
                               WavelengthMax=self.wl_max,
                               MinDSpacing=d_min,
-                              MaxDSpacing=d_max)
+                              MaxDSpacing=d_max*10)
 
         CombinePeaksWorkspace(LHSWorkspace=peaks,
                               RHSWorkspace=sat_peaks,
@@ -145,18 +229,18 @@ class PeaksModel:
 
         DeleteWorkspace(Workspace=sat_peaks)
 
-    def sort_peaks_by_d_hkl(self, peaks):
+    def sort_peaks_by_hkl(self, peaks):
         """
-        Sort peaks table by d-spacing and hkl values.
+        Sort peaks table by descending hkl values.
 
         Parameters
         ----------
-        peaks : float
+        peaks : str
             Name of peaks table.
 
         """
 
-        columns = ['l', 'k', 'h', 'DSpacing']
+        columns = ['l', 'k', 'h']
 
         for col in columns:
 
@@ -164,3 +248,19 @@ class PeaksModel:
                                ColumnNameToSortBy=col,
                                SortAscending=False,
                                OutputWorkspace=peaks)
+
+    def sort_peaks_by_d(self, peaks):
+        """
+        Sort peaks table by descending d-spacing.
+
+        Parameters
+        ----------
+        peaks : str
+            Name of peaks table.
+
+        """
+
+        SortPeaksWorkspace(InputWorkpace=peaks,
+                           ColumnNameToSortBy='DSpacing',
+                           SortAscending=False,
+                           OutputWorkspace=peaks)
