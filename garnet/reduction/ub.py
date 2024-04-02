@@ -11,6 +11,7 @@ from mantid.simpleapi import (SelectCellWithForm,
                               HasUB,
                               LoadIsawUB,
                               SaveIsawUB,
+                              CopySample,
                               mtd)
 
 from mantid.geometry import PointGroupFactory
@@ -345,6 +346,28 @@ class UBModel():
         return indexing
 
     def calculate_hkl(self):
+        """
+        Calculate hkl values without rounding.
+
+        """
     
         CalculatePeaksHKL(PeaksWorkspace=self.peaks,
                           OverWrite=True)
+    
+    def copy_UB(self, workspace):
+        """
+        Copy UB to another workspace.
+
+        Parameters
+        ----------
+        workspace : float
+            Target workspace to copy the UB to.
+
+        """
+
+        CopySample(InputWorkspace=self.peak,
+                   OutputWorkspace=workspace,
+                   CopyName=False,
+                   CopyMaterial=False,
+                   CopyEnvironment=False,
+                   CopyShape=False)

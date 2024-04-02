@@ -24,37 +24,35 @@ refl_cond_dict = {'P': 'Primitive',
                   'B': 'B-face centred',
                   'C': 'C-face centred'}
 
-class PeakTools():
+class PeaksModel:
 
     def __init__(self):
 
-        self.gon_axis = [None]*6
-
         self.edge_pixels = 0
 
-    def find_peaks(self, mde_ws, 
-                         peaks_ws,
+    def find_peaks(self, md, 
+                         peaks,
                          max_d=15,
                          density=1000,
                          max_peaks=50):
 
-        FindPeaksMD(InputWorkspace=mde_ws,
+        FindPeaksMD(InputWorkspace=md,
                     PeakDistanceTreshhold=2*np.pi/max_d,
                     MaxPeaks=max_peaks,
                     PeakFindingStrategy='VolumeNormalization',
                     DensityThresholdFactor=density,
                     EdgePixels=self.edge_pixels,
-                    OutputWorkspace=peaks_ws)
+                    OutputWorkspace=peaks)
 
-    def centroid_peaks(self, mde_ws, peaks_ws, peak_radius):
+    def centroid_peaks(self, md, peaks, peak_radius):
 
-        CentroidPeaksMD(InputWorkspace=mde_ws,
+        CentroidPeaksMD(InputWorkspace=md,
                         PeakRadius=peak_radius,
-                        PeaksWorkspace=peaks_ws,
-                        OutputWorkspace=peaks_ws)
+                        PeaksWorkspace=peaks,
+                        OutputWorkspace=peaks)
 
-    def integrate_peaks(self, mde_ws,
-                              peaks_ws,
+    def integrate_peaks(self, md,
+                              peaks,
                               peak_radius,
                               background_inner_fact=0,
                               background_outer_fact=0,
@@ -63,8 +61,8 @@ class PeakTools():
         background_inner_radius = peak_radius*background_inner_fact
         background_outer_radius = peak_radius*background_outer_fact
 
-        IntegratePeaksMD(InputWorkspace=mde_ws,
-                         PeaksWorkspace=peaks_ws,
+        IntegratePeaksMD(InputWorkspace=md,
+                         PeaksWorkspace=peaks,
                          PeakRadius=peak_radius,
                          BackgroundInnerRadius=background_inner_radius,
                          BackgroundOuterRadius=background_outer_radius,
@@ -77,17 +75,17 @@ class PeakTools():
                          IntegrateIfOnEdge=True,
                          AdaptiveQBackground=False,
                          MaskEdgeTubes=False,
-                         OutputWorkspace=peaks_ws)
+                         OutputWorkspace=peaks)
 
-    def intensity_vs_radius(self, mde_ws,
-                                  peaks_ws,
+    def intensity_vs_radius(self, md,
+                                  peaks,
                                   peak_radius,
                                   background_inner_fact=0,
                                   background_outer_fact=0,
                                   steps=51):
 
-        PeakIntensityVsRadius(InputWorkspace=mde_ws,
-                              PeaksWorkspace=peaks_ws,
+        PeakIntensityVsRadius(InputWorkspace=md,
+                              PeaksWorkspace=peaks,
                               RadiusStart=0.0, 
                               RadiusEnd=peak_radius,
                               NumSteps=steps,
@@ -115,7 +113,7 @@ class PeakTools():
                      EdgePixels=self.edge_pixels,
                      OutputWorkspace='predict')
 
-    def predict_satellite_peaks(self, peaks_ws,
+    def predict_satellite_peaks(self, peaks,
                                       d_min,
                                       mod_vec_1=[0,0,0],
                                       mod_vec_2=[0,0,0],
@@ -123,12 +121,12 @@ class PeakTools():
                                       max_order=0,
                                       cross_terms=False):
 
-        d_max = self.get_max_d_spacing(peaks_ws)
+        d_max = self.get_max_d_spacing(peaks)
 
-        sat_peaks_ws = peaks_ws+'_sat'
+        sat_peaks = peaks+'_sat'
 
-        PredictSatellitePeaks(Peaks=peaks_ws,
-                              SatellitePeaks=sat_peaks_ws,
+        PredictSatellitePeaks(Peaks=peaks,
+                              SatellitePeaks=sat_peaks,
                               ModVector1=mod_vec_1,
                               ModVector2=mod_vec_2,
                               ModVector3=mod_vec_3,
@@ -141,19 +139,28 @@ class PeakTools():
                               MinDSpacing=d_min,
                               MaxDSpacing=d_max)
 
-        CombinePeaksWorkspace(LHSWorkspace=peaks_ws,
-                              RHSWorkspace=sat_peaks_ws,
-                              OutputWorkspace=peaks_ws)
+        CombinePeaksWorkspace(LHSWorkspace=peaks,
+                              RHSWorkspace=sat_peaks,
+                              OutputWorkspace=peaks)
 
-        DeleteWorkspace(Workspace=sat_peaks_ws)
+        DeleteWorkspace(Workspace=sat_peaks)
 
-    def sort_peaks_by_d_hkl(self, peaks_ws):
+    def sort_peaks_by_d_hkl(self, peaks):
+        """
+        Sort peaks table by d-spacing and hkl values.
+
+        Parameters
+        ----------
+        peaks : float
+            Name of peaks table.
+
+        """
 
         columns = ['l', 'k', 'h', 'DSpacing']
 
         for col in columns:
 
-            SortPeaksWorkspace(InputWorkpace=peaks_ws,
+            SortPeaksWorkspace(InputWorkpace=peaks,
                                ColumnNameToSortBy=col,
                                SortAscending=False,
-                               OutputWorkspace=peaks_ws)
+                               OutputWorkspace=peaks)
