@@ -1,17 +1,100 @@
+import os
+
+from mantid.simpleapi import (CloneWorkspace,
+                              CombinePeaksWorkspaces,
+                              LoadNexus,
+                              SaveNexus,
+                              DeleteWorkspace,
+                              mtd)
+
 import numpy as np
+
 import scipy.special
 import scipy.spatial.transform
 
 from lmfit import Minimizer, Parameters
 
+from garnet.reduction.plan import ReductionPlan
+from garnet.reduction.data import DataModel
+from garnet.reduction.peaks import PeaksModel
+from garnet.reduction.ub import UBModel, Optimization
+from garnet.config.instruments import beamlines
+
 class Integration:
-    
+
     def __init__(self, reduction_plan, integration_plan):
 
         self.reduction_plan = reduction_plan
         self.integration_plan = integration_plan
 
+    def integrate(self, runs):
 
+        data = DataModel(beamlines[instrument])
+        
+
+    def combine(self, files, merge_file, cell):
+        
+        peaks = PeaksModel()
+
+        for ind, file in enumerate(files):
+
+            peaks.load_peaks(file, 'tmp')
+            peaks.combine_peaks('tmp', 'combine')
+
+        if mtd.doesExist('combine'):
+
+            peaks.save_peaks(merge_file, 'combine')
+
+            opt = Optimization('combine')
+            opt.optimize_lattice(cell)
+            
+            ub_file = os.path.join(os.path.spiltext(merge_file), '.mat')
+            
+            ub = UBModel('combine')
+            ub.save_ub(ub_file)
+    
+class PeakSphere:
+
+    def __init__(self, r_cut):
+
+        self.params = Parameters()
+
+        self.params.add('sigma', value=r_cut/6, min=0.01, max=r_cut/3)
+
+    def model(self, x, A, sigma):
+
+        z = x/sigma
+
+        return A*(scipy.special.erf(z/np.sqrt(2))-\
+                  np.sqrt(2/np.pi)*z*np.exp(-0.5*z**2))
+
+    def residual(self, params, x, y):
+
+        A = params['A']
+        sigma = params['sigma']
+
+        y_fit = self.model(x, A, sigma)
+
+        return y_fit-y
+
+    def fit(self, x, y):
+
+        y_max = np.max(y)
+
+        if np.isclose(y_max, 0):
+            y_max = np.inf
+
+        self.params['I'].set(value=y_max, min=0, max=100*y_max, vary=True)
+
+        out = Minimizer(self.residual,
+                        self.params,
+                        fcn_args=(x, y),
+                        reduce_fcn='negentropy',
+                        nan_policy='omit')
+
+        result = out.minimize(method='leastsq')
+
+        return 4*result.params['sigma'].value
 
 class PeakEllipsoid:
 
@@ -147,7 +230,7 @@ class PeakEllipsoid:
 
         return diff
 
-    def func(self, Q0, Q1, Q2, A, B, mu0, mu1, mu2, 
+    def func(self, Q0, Q1, Q2, A, B, mu0, mu1, mu2,
                    sigma0, sigma1, sigma2, phi, theta, omega):
 
         y = self.generalized3d(Q0, Q1, Q2, mu0, mu1, mu2,

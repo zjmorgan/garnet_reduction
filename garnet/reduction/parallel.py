@@ -10,6 +10,8 @@ class ParallelTasks:
 
         self.combine_function = None
         self.combine_args = None
+        
+        self.results = None
 
     def run_tasks(self, values, n_proc):
         """
@@ -30,6 +32,8 @@ class ParallelTasks:
 
         multiprocessing.set_start_method('spawn', force=True)    
         with multiprocessing.get_context('spawn').Pool(n_proc) as pool:
-            pool.starmap(self.function, join_args)
+            self.results = pool.starmap(self.function, join_args)
             pool.close()
             pool.join()
+    
+    

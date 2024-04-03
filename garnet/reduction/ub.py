@@ -31,7 +31,7 @@ lattice_group = {'Triclinic': '-1',
                  'Hexagonal': '6/mmm',
                  'Cubic': 'm-3m'}
 
-class UBModel():
+class UBModel:
 
     def __init__(self, peaks):
         """
@@ -113,7 +113,7 @@ class UBModel():
         Parameters
         ----------
         a, b, c : float
-            Lattice constants in ansgroms.
+            Lattice constants in angstroms.
         alpha, beta, gamma : float
             Lattice angles in degrees.
         tol : float, optional
@@ -192,7 +192,7 @@ class UBModel():
         Parameters
         ----------
         a, b, c : float
-            Lattice constants in ansgroms.
+            Lattice constants in angstroms.
         alpha, beta, gamma : float
             Lattice angles in degrees.
 
@@ -323,7 +323,7 @@ class UBModel():
         mod_vec_1, mod_vec_2, mod_vec_3 : list, optional
             Modulation vectors. The default is [0,0,0].
         max_order : int, optional
-            Maximum order greater than zero for sattelites. The default is 0.
+            Maximum order greater than zero for satellites. The default is 0.
         cross_terms : bool, optional
             Include modulation cross terms. The default is False.
 
@@ -409,7 +409,7 @@ class Optimization:
         Returns
         -------
         a, b, c : float
-            Lattice constants in ansgroms.
+            Lattice constants in angstroms.
         alpha, beta, gamma : float
             Lattice angles in degrees.
 
@@ -425,17 +425,30 @@ class Optimization:
             return a, b, c, alpha, beta, gamma
 
     def get_orientation_angles(self):
+        """
+        Current orientation angles.
+
+        Returns
+        -------
+        phi : float
+            Rotation axis azimuthal angle in radians.
+        theta : float
+            Rotation axis polar angle in radians.
+        omega : float
+            Rotation angle in radians.
+
+        """
 
         if mtd.doesExist(self.peaks):
 
             U = mtd[self.peaks].sample().getOrientedLattice().getU()
 
             omega = np.arccos((np.trace(U)-1)/2)
-    
+
             val, vec = np.linalg.eig(U)
-    
+
             ux, uy, uz = vec[:,np.argwhere(np.isclose(val, 1))[0][0]].real
-    
+
             theta = np.arccos(uz)
             phi = np.arctan2(uy, ux)
 
@@ -508,6 +521,26 @@ class Optimization:
         return (a, b, c, alpha, beta, gamma, *params)
 
     def residual(self, x, hkl, Q, fun):
+        """
+        Optimization residual function.
+
+        Parameters
+        ----------
+        x : list
+            Parameters.
+        hkl : list
+            Miller indices.
+        Q : list
+            Q-sample vectors.
+        fun : function
+            Lattice constraint function.
+
+        Returns
+        -------
+        residual : list
+            Least squares residuals.
+
+        """
 
         a, b, c, alpha, beta, gamma, phi, theta, omega = fun(x)
 
@@ -529,12 +562,12 @@ class Optimization:
 
         """
 
-        if mtd.doesExist(self.peaks):        
+        if mtd.doesExist(self.peaks):
 
             a, b, c, alpha, beta, gamma = self.get_lattice_parameters()
-            
+
             phi, theta, omega = self.get_orientation_angles()
-    
+
             fun_dict = {'Cubic': self.cubic,
                         'Rhombohedral': self.rhombohedral,
                         'Tetragonal': self.tetragonal,
@@ -542,7 +575,7 @@ class Optimization:
                         'Orthorhombic': self.orthorhombic,
                         'Monoclinic': self.monoclinic,
                         'Triclinic': self.triclinic}
-    
+
             x0_dict = {'Cubic': (a, ),
                        'Rhombohedral': (a, alpha),
                        'Tetragonal': (a, c),
@@ -550,48 +583,48 @@ class Optimization:
                        'Orthorhombic': (a, b, c),
                        'Monoclinic': (a, b, c, beta),
                        'Triclinic': (a, b, c, alpha, beta, gamma)}
-    
+
             fun = fun_dict[cell]
             x0 = x0_dict[cell]
-    
+
             x0 += (phi, theta, omega)
             args = (self.hkl, self.Q, fun)
-    
+
             sol = scipy.optimize.least_squares(self.residual, x0=x0, args=args)
-    
+
             a, b, c, alpha, beta, gamma, phi, theta, omega = fun(sol.x)
-    
+
             B = self.B_matrix(a, b, c, alpha, beta, gamma)
             U = self.U_matrix(phi, theta, omega)
-    
+
             UB = np.dot(U, B)
-    
+
             J = sol.jac
             cov = np.linalg.inv(J.T.dot(J))
-    
+
             chi2dof = np.sum(sol.fun**2)/(sol.fun.size-sol.x.size)
             cov *= chi2dof
-    
+
             sig = np.sqrt(np.diagonal(cov))
-    
+
             sig_a, sig_b, sig_c, sig_alpha, sig_beta, sig_gamma, *_ = fun(sig)
-    
+
             if np.isclose(a, sig_a):
                 sig_a = 0
             if np.isclose(b, sig_b):
                 sig_b = 0
             if np.isclose(c, sig_c):
                 sig_c = 0
-    
+
             if np.isclose(alpha, sig_alpha):
                 sig_alpha = 0
             if np.isclose(beta, sig_beta):
                 sig_beta = 0
             if np.isclose(gamma, sig_gamma):
                 sig_gamma = 0
-    
+
             SetUB(Workspace=self.peaks, UB=UB)
-    
+
             mtd[self.peaks].sample().getOrientedLattice().setError(sig_a,
                                                                    sig_b,
                                                                    sig_c,
