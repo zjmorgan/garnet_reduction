@@ -177,6 +177,41 @@ class DataModel:
 
         return min_bin, max_bin, bins
 
+    def extract_bin_info(self, ws):
+        """
+        Obtain the bin information from a histogram.
+
+        Parameters
+        ----------
+        ws : str
+            Histogram.
+
+        Returns
+        -------
+        signal : array
+            Data signal.
+        error : array
+            Data uncertanies.
+        x0, x1, ... : array
+            Bin center coordinates.
+
+        """
+        
+        signal = mtd[ws].getSignalArray().copy()
+        error = np.sqrt(mtd[ws].getErrorSquaredArray())
+
+        dims = [mtd[ws].getDimension(i) for i in range(mtd[ws].getNumDims())]
+
+        xs = [np.linspace(dim.getMinimum(),
+                          dim.getMaximum(),
+                          dim.getNBoundaries()) for dim in dims]
+
+        xs = [0.5*(x[1:]+x[:-1]) for x in xs]
+
+        xs = np.meshgrid(*xs, indexing='ij')
+        
+        return signal, error, *xs
+
 class MonochromaticData(DataModel):
 
     def __init__(self):

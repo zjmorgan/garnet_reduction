@@ -16,7 +16,7 @@ from lmfit import Minimizer, Parameters
 
 from garnet.reduction.plan import ReductionPlan
 from garnet.reduction.data import DataModel
-from garnet.reduction.peaks import PeaksModel
+from garnet.reduction.peaks import PeaksModel, PeakModel
 from garnet.reduction.ub import UBModel, Optimization
 from garnet.config.instruments import beamlines
 
@@ -30,7 +30,35 @@ class Integration:
     def integrate(self, runs):
 
         data = DataModel(beamlines[instrument])
+        peaks = PeaksModel()
+
+        data.load_generate_normalization()
+        data.load_data()
+        data.apply_calibration()
+        data.crop_for_normalization()
+        data.convert_to_Q_sample()
+
+        peak_radius, sig_noise, intens = peaks.intensity_vs_radius(md, peaks)
+
+        sphere = PeakSphere(r_cut)
+        sphere.fit(peak_radius, sig_noise)
         
+        peaks.integrate_peaks(md, peaks)
+        peaks.remove_weak_peaks(peaks)
+
+        peak_radius, sig_noise, intens = peaks.intensity_vs_radius(md, peaks)
+        
+        peak = PeakModel(peaks)
+        
+        n = peak.get_number_peaks()
+        
+        for i in range(n):
+
+            c0, c1, c2, r0, r1, r2, v0, v1, v2 = peak.get_peak_shape(i)
+            
+            normalize_to_Q_sample()
+            
+            ellipsoid = PeakEllipsoid()
 
     def combine(self, files, merge_file, cell):
         
@@ -256,14 +284,19 @@ class PeakEllipsoid:
     def loss(self, r):
 
         return np.abs(r).sum()
+    
+    def voxel_volume(self, x0, x1, x2):
+        
+        return np.diff(x0, axis=0).mean()*\
+               np.diff(x1, axis=1).mean()*\
+               np.diff(x2, axis=2).mean()
+
 
     def fit(self, x0, x1, x2, d, n):
 
-        d3x = np.diff(x0, axis=0).mean()*\
-              np.diff(x1, axis=1).mean()*\
-              np.diff(x2, axis=2).mean()
-
         mask = (d > 0) & (n > 0)
+
+        d3x = self.voxel_volume(x0, x1, x2)
 
         self.params.add('I', value=0, min=0, max=1, vary=False)
         self.params.add('B', value=0, min=0, max=1, vary=False)
@@ -383,8 +416,44 @@ class PeakEllipsoid:
 
                 V, W = np.linalg.eig(S)
 
-                r0, r1, r2 = 3*np.sqrt(V)
+                r0, r1, r2 = 4*np.sqrt(V)
 
                 v0, v1, v2 = W.T
 
         return c0, c1, c2, r0, r1, r2, v0, v1, v2, result
+
+    def integrate(self, x0, x1, x2, d, n, c0, c1, c2, r0, r1, r2, v0, v1, v2):
+
+        d3x = self.voxel_volume(x0, x1, x2)
+
+        W = np.column_stack([v0, v1, v2])
+        V = np.diag([1/r0**2, 1/r1**2, 1/r2**2])
+
+        A = (W @ V) @ W.T
+
+        dx = [x0-c0, x1-c1, x2-c2]
+
+        dist = np.einsum('iklm,iklm->klm', 
+                         np.einsum('ij,jklm->iklm', A, dx), dx)
+
+        pk = (dist < 1)
+
+        struct = scipy.ndimage.generate_binary_structure(3, 1)
+        dilate = scipy.ndimage.binary_dilation(pk, struct, border_value=0)
+
+        bkg = (dilate ^ pk) & (d > 0)
+        pk = (dist < 1) & (d > 0) & (n > 0)
+
+        B = np.sum(d[bkg]/d[bkg])/np.sum(1/d[bkg])
+        B_err = np.sqrt(1/np.sum(1/d[bkg]))
+
+        num = np.nansum(d[pk]-B)
+        den = np.nansum(n[pk])
+        var = np.nansum(d[pk]+B_err**2)
+
+        scale = np.sum(pk)*d3x
+
+        intens = (num/den)*scale
+        sig = np.sqrt(var/den**2)*scale
+
+        return intens, sig

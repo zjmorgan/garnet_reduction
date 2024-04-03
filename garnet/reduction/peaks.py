@@ -165,10 +165,12 @@ class PeaksModel:
         Returns
         -------
 
-        x : list
+        radius : list
             Peak radius.
-        y : list
-            Peak signal/noise ratio at lowest.
+        sig_noise : list
+            Peak signal/noise ratio at lowest threshold.
+        intens : list
+            Peak intensity.
 
         """
 
@@ -186,10 +188,11 @@ class PeaksModel:
                               OutputWorkspace=peaks+'_sig/noise_vs_rad/lowest',
                               WorkspaceIndex=0)
 
-        x = mtd[peaks+'_sig/noise_vs_rad/lowest'].extractX().ravel()
-        y = mtd[peaks+'_sig/noise_vs_rad/lowest'].extractY().ravel()
+        peak_radius = mtd[peaks+'_sig/noise_vs_rad/lowest'].extractX().ravel()
+        sig_noise = mtd[peaks+'_sig/noise_vs_rad/lowest'].extractY().ravel()
+        intens = mtd[peaks+'_intens_vs_rad'].extractY()
 
-        return x, y
+        return peak_radius, sig_noise, intens
 
     def get_max_d_spacing(self, ws):
         """
