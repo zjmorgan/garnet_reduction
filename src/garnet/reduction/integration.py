@@ -1,6 +1,8 @@
 import os
 
 from mantid.simpleapi import mtd
+from mantid import config
+config['Q.convention'] = 'Crystallography'
 
 import numpy as np
 

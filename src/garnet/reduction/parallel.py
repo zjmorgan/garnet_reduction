@@ -5,7 +5,6 @@ import numpy as np
 
 from mantid import config
 config['Q.convention'] = 'Crystallography'
-
 class ParallelTasks:
 
     def __init__(self, function, combine=None):
