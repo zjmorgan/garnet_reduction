@@ -39,10 +39,8 @@ class ParallelTasks:
 
         multiprocessing.set_start_method('spawn', force=True)    
         with multiprocessing.get_context('spawn').Pool(n_proc) as pool:
-            self.result = pool.starmap(self.function, join_args)
+            self.results = pool.starmap(self.function, join_args)
+            if self.combine is not None:
+                self.combine(plan, self.results)
             pool.close()
             pool.join()
-
-        if self.combine is not None:
-
-            self.combine(plan, self.results)

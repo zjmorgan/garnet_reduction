@@ -1,4 +1,11 @@
 import sys
+import os
+
+directory = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(directory)
+
+directory = os.path.abspath(os.path.join(directory, '..'))
+sys.path.append(directory)
 
 from garnet.reduction.plan import ReductionPlan
 from garnet.reduction.parallel import ParallelTasks

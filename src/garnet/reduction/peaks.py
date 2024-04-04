@@ -426,7 +426,8 @@ class PeaksModel:
 
         """
 
-        LoadNexus(Filename=filename, OutputWorkpace=peaks)
+        LoadNexus(Filename=filename,
+                  OutputWorkspace=peaks)
 
     def save_peaks(self, filename, peaks):
         """

@@ -181,7 +181,7 @@ class Integration:
             peaks.save_peaks(output_file, 'combine')
 
             opt = Optimization('combine')
-            opt.optimize_lattice(self.plan['Cell'])
+            opt.optimize_lattice(self.param['Cell'])
 
             ub_file = os.path.spiltext(output_file)+'.mat'
 
