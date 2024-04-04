@@ -4,6 +4,7 @@ import multiprocessing
 import numpy as np
 
 from mantid import config
+config['Q.convention'] = 'Crystallography'
 
 class ParallelTasks:
 
@@ -39,8 +40,18 @@ class ParallelTasks:
 
         multiprocessing.set_start_method('spawn', force=True)    
         with multiprocessing.get_context('spawn').Pool(n_proc) as pool:
-            self.results = pool.starmap(self.function, join_args)
+            self.results = pool.starmap(self.safe_function_wrapper, join_args)
             if self.combine is not None:
                 self.combine(plan, self.results)
             pool.close()
             pool.join()
+
+    def safe_function_wrapper(self, *args, **kwargs):
+    
+        try:
+            return self.function(*args, **kwargs)
+        except Exception as e:
+            print('Exception in worker function: {}'.format(e))
+            import traceback
+            traceback.print_exc()
+            raise

@@ -18,7 +18,7 @@ if __name__ == '__main__':
     rp = ReductionPlan()
 
     rp.load_plan(filename)
-    
+
     pt = ParallelTasks(Integration.integrate_parallel,
                        Integration.combine_parallel)
 

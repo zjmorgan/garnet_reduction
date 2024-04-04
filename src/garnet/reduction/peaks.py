@@ -672,3 +672,26 @@ class PeakModel:
                                    radii)
 
         mtd[self.peaks].getPeak(no).setPeakShape(shape)
+
+class StatisticsModel:
+
+    def __init__(self, peaks):
+
+        self.peaks = peaks+'_stats'
+
+        CloneWorkspace(InputWorkspace=peaks, 
+                       OutputWorkspace=self.peaks)
+
+    def set_scale(self, scale='auto'):
+
+        if scale == 'auto':
+            scale = 1
+            if mtd[self.peaks].getNumberPeaks() > 1:
+                I_max = max(mtd[self.peaks].column('Intens'))
+                if I_max > 0:
+                    scale = 1e4/I_max
+
+        for peak in mtd[self.peaks]:
+            peak.setIntensity(scale*peak.getIntensity())
+            peak.setSigmaIntensity(scale*peak.getSigmaIntensity())
+

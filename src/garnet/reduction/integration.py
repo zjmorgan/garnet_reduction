@@ -136,6 +136,10 @@ class Integration:
         return output_file
 
     def bin_extent(self, c0, c1, c2, r0, r1, r2, v0, v1, v2, r_cut):
+        """
+        Region extent and binning around a peak based on its initial shape.
+        
+        """
 
         r0 = r_cut if r0 > r_cut or np.isclose(r0, 0) else r0
         r1 = r_cut if r1 > r_cut or np.isclose(r1, 0) else r1
