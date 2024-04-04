@@ -659,6 +659,7 @@ class PeakModel:
         Qx, Qy, Qz = R @ Q
 
         radii = [0, 0, 0]
+        print(Q)
 
         if -4*np.pi*Qz/np.linalg.norm(Q)**2 > 0:
 
@@ -694,4 +695,3 @@ class StatisticsModel:
         for peak in mtd[self.peaks]:
             peak.setIntensity(scale*peak.getIntensity())
             peak.setSigmaIntensity(scale*peak.getSigmaIntensity())
-
