@@ -187,12 +187,16 @@ class Integration:
             peaks.save_peaks(output_file, 'combine')
 
             opt = Optimization('combine')
-            opt.optimize_lattice(self.param['Cell'])
+            opt.optimize_lattice(self.params['Cell'])
 
             ub_file = os.path.spiltext(output_file)+'.mat'
 
             ub = UBModel('combine')
             ub.save_ub(ub_file)
+
+        for file in files:
+
+            os.remove(file)
 
 class PeakSphere:
 
