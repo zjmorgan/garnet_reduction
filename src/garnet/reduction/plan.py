@@ -1,3 +1,4 @@
+import os
 import json
 
 class ReductionPlan:
@@ -6,6 +7,23 @@ class ReductionPlan:
 
         self.plan = None
 
+    def set_output(self, filename):
+        """
+        Change the output directory and name.
+
+        Parameters
+        ----------
+        filename : str
+            JSON file of reduction plan.
+
+        """
+
+        path = os.path.dirname(os.path.abspath(filename))
+        name = os.path.splitext(os.path.basename(filename))[0]
+
+        self.plan['OutputPath'] = path
+        self.plan['OutputName'] = name
+
     def load_plan(self, filename):
         """
         Load a data reduction plan.
@@ -13,13 +31,18 @@ class ReductionPlan:
         Parameters
         ----------
         filename : str
-            JSON file or reduction plan.
+            JSON file of reduction plan.
 
         """
 
-        with open(filename) as f:
+        with open(filename, 'r') as f:
 
             self.plan = json.load(f)
+
+        self.set_output(filename)
+        runs = self.plan['Runs']
+        if type(runs) is str:
+            self.plan['Runs'] = self.runs_string_to_list(runs)
 
     def save_plan(self, filename):
         """
@@ -28,11 +51,16 @@ class ReductionPlan:
         Parameters
         ----------
         filename : str
-            JSON file or reduction plan.
+            JSON file of reduction plan.
 
         """
 
         if self.plan is not None:
+
+            self.set_output(filename)
+            runs = self.plan['Runs']
+            if type(runs) is list:
+                self.plan['Runs'] = self.runs_list_to_string(runs)
 
             with open(filename, 'w') as f:
 

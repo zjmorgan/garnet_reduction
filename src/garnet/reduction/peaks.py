@@ -4,7 +4,6 @@ from mantid.simpleapi import (FindPeaksMD,
                               CentroidPeaksMD,
                               IntegratePeaksMD,
                               PeakIntensityVsRadius,
-                              CombinePeaksWorkspace,
                               FilterPeaks,
                               SortPeaksWorkspace,
                               DeleteWorkspace,
@@ -132,7 +131,7 @@ class PeaksModel:
                          FixMajorAxisLength=False,
                          UseCentroid=True,
                          MaxIterations=3,
-                         RelaceIntensity=True,
+                         ReplaceIntensity=True,
                          IntegrateIfOnEdge=True,
                          AdaptiveQBackground=False,
                          MaskEdgeTubes=False,
@@ -321,9 +320,9 @@ class PeaksModel:
                               MinDSpacing=d_min,
                               MaxDSpacing=d_max*10)
 
-        CombinePeaksWorkspace(LHSWorkspace=peaks,
-                              RHSWorkspace=sat_peaks,
-                              OutputWorkspace=peaks)
+        CombinePeaksWorkspaces(LHSWorkspace=peaks,
+                               RHSWorkspace=sat_peaks,
+                               OutputWorkspace=peaks)
 
         DeleteWorkspace(Workspace=sat_peaks)
 
@@ -442,7 +441,8 @@ class PeaksModel:
 
         """
 
-        SaveNexus(Filename=filename, InputWorkpace=peaks)
+        SaveNexus(Filename=filename,
+                  InputWorkspace=peaks)
 
     def combine_peaks(self, peaks, merge):
         """
@@ -579,21 +579,6 @@ class PeakModel:
 
         return mtd[self.peaks].getNumberPeaks()
 
-    def set_Q_sample(self, no, Q0, Q1, Q2):
-        """
-        Update the Q-sample vector of the peak.
-
-        Parameters
-        ----------
-        no : int
-            Peak index number.
-        Q0, Q1, Q2 : float
-            Q-sample vector components.
-
-        """
-
-        mtd[self.peaks].getPeak(no).setQSampleFrame(V3D(Q0,Q1,Q2))
-
     def set_peak_intensity(self, no, intens, sig):
         """
         Update the peak intensity
@@ -610,7 +595,7 @@ class PeakModel:
         """
 
         mtd[self.peaks].getPeak(no).setIntensity(intens)
-        mtd[self.peaks].getPeak(no).setSigmaIntensity()
+        mtd[self.peaks].getPeak(no).setSigmaIntensity(sig)
 
     def get_peak_shape(self, no):
         """
@@ -650,7 +635,7 @@ class PeakModel:
 
         return c0, c1, c2, r0, r1, r2, v0, v1, v2
 
-    def set_peak_shape(self, no, r0, r1, r2, v0, v1, v2):
+    def set_peak_shape(self, no, c0, c1, c2, r0, r1, r2, v0, v1, v2):
         """
         Update the shape of the peak.
 
@@ -658,6 +643,8 @@ class PeakModel:
         ----------
         no : int
             Peak index number.
+        c0, c1, c2 : float
+            Peak center.
         r0, r1, r2 : float
             Principal radii.
         v0, v1, v2 : list
@@ -665,7 +652,18 @@ class PeakModel:
 
         """
 
-        radii = [r0, r1, r2]
+        R = mtd[self.peaks].getPeak(no).getGoniometerMatrix()
+
+        Q = np.array([c0, c1, c2])
+        Qx, Qy, Qz = R @ Q
+
+        radii = [0, 0, 0]
+
+        if -4*np.pi*Qz/np.linalg.norm(Q)**2 > 0:
+
+            mtd[self.peaks].getPeak(no).setQSampleFrame(V3D(c0, c1, c2))
+
+            radii = [r0, r1, r2]
 
         shape = PeakShapeEllipsoid([V3D(*v0), V3D(*v1), V3D(*v2)],
                                    radii,
@@ -673,23 +671,3 @@ class PeakModel:
                                    radii)
 
         mtd[self.peaks].getPeak(no).setPeakShape(shape)
-
-    def get_goniometer_matrix(self, no):
-        """
-        Obtain the goniometer matrix of the peak.
-        
-
-        Parameters
-        ----------
-        no : int
-            Peak index number.
-
-        Returns
-        -------
-        R : 2d-array
-            Goniometer matrix.
-
-        """
-    
-        return mtd[self.peaks].getPeak(no).getGoniometerMatrix()
-

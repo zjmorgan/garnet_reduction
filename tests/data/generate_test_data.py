@@ -3,11 +3,18 @@ import json
 corelli = {
    'IPTS': '31429',
    'Runs': '324246',
+   'UB' : None,
    'DetectorCalibration': '/SNS/CORELLI/shared/calibration/2022A/calibration.xml',
    'TubeCalibration': '/SNS/CORELLI/shared/calibration/tube/calibration_corelli_20200109.nxs.h5',
    'MaskFile': '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/integration.xml',
    'VanadiumFile': '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/solid_angle_2p5-8.nxs',
    'FluxFile': '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/flux_2p5-8.nxs',
+   'Integration':
+   {
+       'Cell' : 'Orthorhombic',
+       'Centering' : 'Primitive',
+       'Radius' : 0.25,
+   }
 }
 
 topaz = {
@@ -26,7 +33,7 @@ snap = {
 }
 
 demand = {
-   'IPTS': '9884',
+    'IPTS': '9884',
    'Experiment': '817',
    'Runs': '2',
 }
