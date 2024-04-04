@@ -35,8 +35,7 @@ class Integration:
 
         output_file = os.path.join(self.plan['OutputPath'], 
                                    'integration', 
-                                   self.plan['OutputName'],
-                                   '.nxs')
+                                   self.plan['OutputName']+'.nxs')
 
         data = DataModel(beamlines[self.plan['Instrument']])
 
