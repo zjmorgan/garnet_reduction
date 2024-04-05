@@ -1,6 +1,24 @@
 import numpy as np
 
-from garnet.reduction.integration import PeakEllipsoid
+from garnet.reduction.integration import PeakSphere, PeakEllipsoid
+
+def test_sphere():
+
+    r_cut = 0.25
+    
+    A = 1.2
+    s = 0.1
+    
+    r = np.linspace(0, r_cut, 51)
+
+    I = A*np.tanh((r/s)**3)
+
+    sphere = PeakSphere(r_cut)
+
+    radius = sphere.fit(r, I)
+
+    assert np.tanh((radius/s)**3) > 0.95
+    assert radius < r_cut
 
 def test_ellipsoid():
 
