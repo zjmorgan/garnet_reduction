@@ -561,9 +561,11 @@ class PeakEllipsoid:
 
                 V, W = np.linalg.eig(S)
 
-                r0, r1, r2 = 4*np.sqrt(V)
+                if (V > 0).all():
 
-                v0, v1, v2 = W.T
+                    r0, r1, r2 = 4*np.sqrt(V)
+
+                    v0, v1, v2 = W.T
 
         return c0, c1, c2, r0, r1, r2, v0, v1, v2, result
 
