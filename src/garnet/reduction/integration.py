@@ -221,7 +221,7 @@ class Integration:
             ub_file = os.path.splitext(output_file)[0]+'.mat'
 
             ub = UBModel('combine')
-            ub.save_ub(ub_file)
+            ub.save_UB(ub_file)
 
         for file in files:
 
