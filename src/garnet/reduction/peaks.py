@@ -659,7 +659,6 @@ class PeakModel:
         Qx, Qy, Qz = R @ Q
 
         radii = [0, 0, 0]
-        print(Qx, Qy, Qz)
 
         if -4*np.pi*Qz/np.linalg.norm(Q)**2 > 0:
 

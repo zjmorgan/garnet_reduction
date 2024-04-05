@@ -402,7 +402,7 @@ class Optimization:
 
         self.peaks = peaks
 
-    def get_lattice_parametes(self):
+    def get_lattice_parameters(self):
         """
         Current lattice parameters.
 
