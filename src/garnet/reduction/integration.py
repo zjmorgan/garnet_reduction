@@ -218,7 +218,7 @@ class Integration:
             opt = Optimization('combine')
             opt.optimize_lattice(self.params['Cell'])
 
-            ub_file = os.path.spiltext(output_file)+'.mat'
+            ub_file = os.path.splitext(output_file)+'.mat'
 
             ub = UBModel('combine')
             ub.save_ub(ub_file)
