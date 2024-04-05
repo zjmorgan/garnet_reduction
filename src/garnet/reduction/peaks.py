@@ -24,15 +24,15 @@ from mantid.dataobjects import PeakShapeEllipsoid
 
 import numpy as np
 
-refl_cond_dict = {'P': 'Primitive',
-                  'I': 'Body centred',
-                  'F': 'All-face centred',
-                  'R': 'Primitive', # rhombohedral axes
-                  'R(obv)': 'Rhombohderally centred, obverse', # hexagonal axes
-                  'R(rev)': 'Rhombohderally centred, reverse', # hexagonal axes
-                  'A': 'A-face centred',
-                  'B': 'B-face centred',
-                  'C': 'C-face centred'}
+centering_reflection = {'P': 'Primitive',
+                        'I': 'Body centred',
+                        'F': 'All-face centred',
+                        'R': 'Primitive', # rhomb axes
+                        'R(obv)': 'Rhombohderally centred, obverse', # hex axes
+                        'R(rev)': 'Rhombohderally centred, reverse', # hex axes
+                        'A': 'A-face centred',
+                        'B': 'B-face centred',
+                        'C': 'C-face centred'}
 
 class PeaksModel:
 
@@ -263,7 +263,7 @@ class PeaksModel:
                      WavelengthMax=lamda_max,
                      MinDSpacing=d_min,
                      MaxDSpacing=d_max*1.2,
-                     ReflectionCondition=refl_cond_dict[centering],
+                     ReflectionCondition=centering_reflection[centering],
                      RoundHKL=True,
                      EdgePixels=self.edge_pixels,
                      OutputWorkspace=peaks)

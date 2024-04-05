@@ -11,8 +11,14 @@ corelli = {
    'FluxFile': '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/flux_2p5-8.nxs',
    'Integration':
    {
-       'Cell' : 'Orthorhombic',
-       'Centering' : 'Primitive',
+       'Cell' : 'Cubic',
+       'Centering' : 'I',
+       'ModVec1': [0,0,0],
+       'ModVec2': [0,0,0],
+       'ModVec3': [0,0,0],
+       'MaxOrder': 0,
+       'CrossTerms': False,
+       'MinD' : 0.7,
        'Radius' : 0.25,
    }
 }

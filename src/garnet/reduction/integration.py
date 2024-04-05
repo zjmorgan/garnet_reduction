@@ -12,8 +12,8 @@ import scipy.spatial.transform
 from lmfit import Minimizer, Parameters
 
 from garnet.reduction.data import DataModel
-from garnet.reduction.peaks import PeaksModel, PeakModel
-from garnet.reduction.ub import UBModel, Optimization
+from garnet.reduction.peaks import PeaksModel, PeakModel, centering_reflection
+from garnet.reduction.ub import UBModel, Optimization, lattice_group
 from garnet.config.instruments import beamlines
 
 class Integration:
@@ -22,6 +22,34 @@ class Integration:
 
         self.plan = plan
         self.params = plan['Integration']
+
+        self.validate_params()
+    
+    def validate_params(self):
+
+        assert self.params['Cell'] in lattice_group.keys()
+        assert self.params['Centering'] in centering_reflection.keys()
+        assert self.params['MinD'] > 0
+        assert self.params['Radius'] > 0
+
+        if self.params.get('ModVec1') is None:
+            self.params['ModVec1'] = [0,0,0]
+        if self.params.get('ModVec2') is None:
+            self.params['ModVec2'] = [0,0,0]
+        if self.params.get('ModVec3') is None:
+            self.params['ModVec3'] = [0,0,0]
+
+        if self.params['MaxOrder'] is None:
+            self.params['MaxOrder'] = 0
+        if self.params['CrossTerms'] is None:
+            self.params['CrossTerms'] = False
+
+        assert len(self.params['ModVec1']) == 3
+        assert len(self.params['ModVec2']) == 3
+        assert len(self.params['ModVec3']) == 3
+
+        assert self.params['MaxOrder'] > -1
+        assert type(self.params['CrossTerms']) is bool
 
     @staticmethod
     def integrate_parallel(plan, runs, proc):

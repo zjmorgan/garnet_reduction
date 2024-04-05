@@ -2,6 +2,7 @@ import os
 import tempfile
 
 from garnet.reduction.plan import ReductionPlan
+from garnet.reduction.integration import Integration
 
 filepath = os.path.dirname(os.path.abspath(__file__))
 
@@ -43,12 +44,48 @@ def test_save_plan():
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
-        tmp_plan = os.path.join(tmpdir, 'tmp_plan.json')
+        tmp_name = 'tmp_plan.json'
+        tmp_plan = os.path.join(tmpdir, tmp_name)
+
+        assert garnet_plan.plan['OutputName'] == 'corelli_reduction_plan'
+        assert garnet_plan.plan['OutputPath'] == os.path.join(filepath, 'data')
 
         garnet_plan.save_plan(tmp_plan)
+
+        assert garnet_plan.plan['OutputName'] == 'tmp_plan'
+        assert garnet_plan.plan['OutputPath'] == tmpdir
 
         tmp_garnet_plan = ReductionPlan()
 
         tmp_garnet_plan.load_plan(tmp_plan)
         
         garnet_plan.plan == tmp_garnet_plan.plan
+
+        assert tmp_garnet_plan.plan['OutputName'] == 'tmp_plan'
+        assert tmp_garnet_plan.plan['OutputPath'] == tmpdir
+
+def test_integration_plan():
+
+    garnet_plan = ReductionPlan()
+
+    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.json')
+
+    garnet_plan.load_plan(reduction_plan)
+
+    params = garnet_plan.plan.get('Integration')
+
+    assert params is not None
+
+    assert params['Cell'] == 'Cubic'
+    assert params['Centering'] == 'I'
+    assert params['ModVec1'] == [0,0,0]
+    assert params['ModVec2'] == [0,0,0]
+    assert params['ModVec3'] == [0,0,0]
+    assert params['MaxOrder'] == 0
+    assert params['CrossTerms'] == False
+    assert params['MinD'] == 0.7
+    assert params['Radius'] == 0.25
+
+    integrate = Integration(garnet_plan.plan)
+
+    assert integrate is not None
