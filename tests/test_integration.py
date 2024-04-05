@@ -9,13 +9,13 @@ def test_ellipsoid():
     nx, ny, nz = 41, 41, 41
     
     Qx_min, Qx_max = 0, 2
-    Qy_min, Qy_max = -2, 2
-    Qz_min, Qz_max = -1.8, -0.8
+    Qy_min, Qy_max = -1.9, 2.1
+    Qz_min, Qz_max = -3.2, 0.8
     
-    Q0_x, Q0_y, Q0_z = 1.1, 0.1, -1.3
+    Q0_x, Q0_y, Q0_z = 1.1, 0.1, -1.2
     
-    sigma_x, sigma_y, sigma_z = 0.1, 0.2, 0.08
-    rho_yz, rho_xz, rho_xy = 0.1, -0.1, -0.2
+    sigma_x, sigma_y, sigma_z = 0.1, 0.15, 0.12
+    rho_yz, rho_xz, rho_xy = 0.1, -0.1, -0.15
     
     a = 0.2
     b = 0.5
@@ -62,5 +62,17 @@ def test_ellipsoid():
     
     intens, sig = ellipsoid.integrate(Qx, Qy, Qz, data, norm, *params)
     
+    mu = params[0:3]
+    radii = params[3:6]
+    vectors = params[6:9]
+
+    S = ellipsoid.S_matrix(*ellipsoid.scale(*radii, s=0.25),
+                           *ellipsoid.angles(*vectors))
+
+    s = np.sqrt(np.diag(S))
+    sigma = np.sqrt(np.diag(cov))
+
     assert np.isclose(intens, 1, rtol=0.1)
-    assert np.isclose(params[0:3], Q0, rtol=0.05).all()
+    assert intens > 3*sig
+    assert np.isclose(mu, Q0, atol=0.1).all()
+    assert np.isclose(s, sigma, atol=0.05).all()

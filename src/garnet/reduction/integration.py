@@ -338,7 +338,7 @@ class PeakEllipsoid:
 
         return r0, r1, r2
 
-    def scale(self, r0, r1, r2, s=1/3):
+    def scale(self, r0, r1, r2, s=1/4):
 
         return s*r0, s*r1, s*r2
 
