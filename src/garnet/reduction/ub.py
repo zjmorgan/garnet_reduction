@@ -512,7 +512,7 @@ class Optimization:
 
         a, b, c, beta, *params = x
 
-        return (a, b, c, 90, beta, np.pi/2, *params)
+        return (a, b, c, 90, beta, 90, *params)
 
     def triclinic(self, x):
 
