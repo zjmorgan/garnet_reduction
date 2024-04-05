@@ -1,6 +1,7 @@
 import json
 
 corelli = {
+   'Instrument' : 'CORELLI',
    'IPTS': '31429',
    'Runs': '324246',
    'UB' : None,
@@ -24,27 +25,32 @@ corelli = {
 }
 
 topaz = {
+   'Instrument' : 'TOPAZ',
    'IPTS': '31189',
    'Runs': '46917',
 }
 
 mandi = {
+   'Instrument' : 'MANDI',
    'IPTS': '8776',
    'Runs': '10934',
 }
 
 snap = {
+   'Instrument' : 'SNP',
    'IPTS': '24179',
    'Runs': '51255',
 }
 
 demand = {
-    'IPTS': '9884',
+   'Instrument' : 'DEMAND',
+   'IPTS': '9884',
    'Experiment': '817',
    'Runs': '2',
 }
 
 wand2 = {
+   'Instrument' : 'WAND²',
    'IPTS': '7776',
    'runs': '26640:26642',
 }

@@ -1,11 +1,22 @@
 import os
 import json
 
+from garnet.config.instruments import beamlines
+
 class ReductionPlan:
 
     def __init__(self):
 
         self.plan = None
+
+    def validate_plan(self):
+
+        assert self.plan['Instrument'] in beamlines.keys()
+
+        if self.plan.get('UBFile') is not None:
+            UB = self.plan['UBFile']
+            assert os.path.exists(UB)
+            assert os.path.splitext(UB)[1] == '.mat'
 
     def set_output(self, filename):
         """
@@ -38,6 +49,8 @@ class ReductionPlan:
         with open(filename, 'r') as f:
 
             self.plan = json.load(f)
+
+        self.validate_plan()
 
         self.set_output(filename)
         runs = self.plan['Runs']
