@@ -21,6 +21,8 @@ from mantid.simpleapi import (Load,
                               CropWorkspaceForMDNorm,
                               ClearUB,
                               LoadIsawUB,
+                              CloneWorkspace,
+                              PlusMD,
                               mtd)
 
 def DataModel(instrument_config):
@@ -51,7 +53,7 @@ class BaseDataModel:
         gon = self.instrument_config.get('Goniometer')
         if gon_axis_names is None:
             gon_axis_names = list(gon.keys())
-            
+
         gon_ind = 0
         for i, name in enumerate(gon.keys()):
             axis = gon[name]
@@ -145,7 +147,7 @@ class BaseDataModel:
                       Axis5=self.gon_axis[5],
                       Average=self.laue)
 
-    def calulate_binning_from_bins(self, xmin, xmax, bins):
+    def calculate_binning_from_bins(self, xmin, xmax, bins):
         """
         Determine the binning from the number of bins.
 
@@ -169,14 +171,20 @@ class BaseDataModel:
 
         """
 
-        step = (xmax-xmin)/(bins-1)
+        if bins > 1:
 
-        min_bin = xmin-0.5*step
-        max_bin = xmax+0.5*step
+            step = (xmax-xmin)/(bins-1)
 
-        return min_bin, max_bin, step
+            min_bin = xmin-0.5*step
+            max_bin = xmax+0.5*step
 
-    def calulate_binning_from_step(xmin, xmax, step):
+            return min_bin, max_bin, step
+
+        else:
+
+            return xmin, xmax, xmax-xmin
+
+    def calculate_binning_from_step(xmin, xmax, step):
         """
         Determine the binning from step size.
 
@@ -200,12 +208,18 @@ class BaseDataModel:
 
         """
 
-        bins = np.ceil((xmax-xmin)/step) + 1
+        if step < xmax-xmin:
 
-        min_bin = xmin-0.5*step
-        max_bin = xmax+0.5*step
+            bins = np.ceil((xmax-xmin)/step)+1
 
-        return min_bin, max_bin, bins
+            min_bin = xmin-0.5*step
+            max_bin = xmax+0.5*step
+
+            return min_bin, max_bin, bins
+
+        else:
+
+            return xmin, xmax, 1
 
     def extract_bin_info(self, ws):
         """
@@ -226,7 +240,7 @@ class BaseDataModel:
             Bin center coordinates.
 
         """
-        
+
         signal = mtd[ws].getSignalArray().copy()
         error = np.sqrt(mtd[ws].getErrorSquaredArray())
 
@@ -239,8 +253,32 @@ class BaseDataModel:
         xs = [0.5*(x[1:]+x[:-1]) for x in xs]
 
         xs = np.meshgrid(*xs, indexing='ij')
-        
+
         return signal, error, *xs
+
+    def combine_histograms(self, ws, merge):
+        """
+        Merge two peaks workspaces into one.
+
+        Parameters
+        ----------
+        ws : str
+            Name of histgram to be added.
+        merge : str
+            Name of histgram to be accumulated.
+
+        """
+
+        if not mtd.doesExist(merge):
+
+            CloneWorkspace(InputWorkspace=ws,
+                           OutputWorkspace=merge)
+
+        else:
+
+            PlusMD(LHSWorkspace=merge,
+                   RHSWorkspace=ws,
+                   OutputWorkspace=merge)
 
 class MonochromaticData(BaseDataModel):
 
@@ -450,7 +488,7 @@ class LaueData(BaseDataModel):
         self.calculate_maximum_Q()
 
         self.set_goniometer(event_name)
-    
+
     def calculate_maximum_Q(self):
         """
         Update maximum Q.
@@ -460,7 +498,7 @@ class LaueData(BaseDataModel):
         lamda_min = np.min(self.wavelength_band)
         self.Q_max = 4*np.pi/lamda_min*np.sin(self.theta_max)
 
-    def apply_calibration(self, event_name, 
+    def apply_calibration(self, event_name,
                                 detector_calibration,
                                 tube_calibration=None):
         """
@@ -541,7 +579,7 @@ class LaueData(BaseDataModel):
         """
 
         if not mtd.doesExist('sa'):
-    
+
             LoadNexus(Filename=vanadium_file,
                       OutputWorkspace='sa')
 
@@ -549,13 +587,13 @@ class LaueData(BaseDataModel):
 
             LoadNexus(Filename=spectrum_file,
                       OutputWorkspace='flux')
-        
+
             self.k_min = mtd['flux'].getXDimension().getMinimum()
             self.k_max = mtd['flux'].getXDimension().getMaximum()
-            
+
             lamda_min = 2*np.pi/self.k_max
             lamda_max = 2*np.pi/self.k_min
-            
+
             self.wavelength_band = [lamda_min, lamda_max]
 
     def crop_for_normalization(self, event_name):
@@ -564,7 +602,7 @@ class LaueData(BaseDataModel):
 
         event_name : str
             Name of raw event_name data.
-        
+
         """
 
         if mtd.doesExist(event_name):
@@ -572,7 +610,7 @@ class LaueData(BaseDataModel):
             ConvertUnits(InputWorkspace=event_name,
                          OutputWorkspace=event_name,
                          Target='Momentum')
-    
+
             CropWorkspaceForMDNorm(InputWorkspace=event_name,
                                    XMin=self.k_min,
                                    XMax=self.k_max,
@@ -595,18 +633,18 @@ class LaueData(BaseDataModel):
 
         if mtd.doesExist(md) and mtd.doesExist('sa') and mtd.doesExist('flux'):
 
-            Q0_min, Q0_max, Q1_min, Q1_max, Q2_min, Q2_max = extents           
+            (Q0_min, Q0_max), (Q1_min, Q1_max), (Q2_min, Q2_max) = extents
 
             nQ0, nQ1, nQ2 = bins
-                
-            Q0_min, Q0_max, dQ0 = self.calulate_binning_from_bins(Q0_min,
-                                                                  Q0_max, nQ0)
 
-            Q1_min, Q1_max, dQ1 = self.calulate_binning_from_bins(Q1_min,
-                                                                  Q1_max, nQ1)
+            Q0_min, Q0_max, dQ0 = self.calculate_binning_from_bins(Q0_min,
+                                                                   Q0_max, nQ0)
 
-            Q2_min, Q2_max, dQ2 = self.calulate_binning_from_bins(Q2_min,
-                                                                  Q2_max, nQ2)
+            Q1_min, Q1_max, dQ1 = self.calculate_binning_from_bins(Q1_min,
+                                                                   Q1_max, nQ1)
+
+            Q2_min, Q2_max, dQ2 = self.calculate_binning_from_bins(Q2_min,
+                                                                   Q2_max, nQ2)
 
             MDNorm(InputWorkspace=md,
                    RLU=False,
@@ -623,3 +661,67 @@ class LaueData(BaseDataModel):
             norm, _, Q0, Q1, Q2 = self.extract_bin_info(md+'_norm')
 
             return data, norm, Q0, Q1, Q2
+    
+    def normalize_to_hkl(self, md, projections, extents, bins, symmetry=None):
+
+        if mtd.doesExist(md) and mtd.doesExist('sa') and mtd.doesExist('flux'):
+
+            v0, v1, v2 = projections            
+
+            (Q0_min, Q0_max), (Q1_min, Q1_max), (Q2_min, Q2_max) = extents
+
+            nQ0, nQ1, nQ2 = bins
+
+            Q0_min, Q0_max, dQ0 = self.calculate_binning_from_bins(Q0_min,
+                                                                   Q0_max, nQ0)
+
+            Q1_min, Q1_max, dQ1 = self.calculate_binning_from_bins(Q1_min,
+                                                                   Q1_max, nQ1)
+
+            Q2_min, Q2_max, dQ2 = self.calculate_binning_from_bins(Q2_min,
+                                                                   Q2_max, nQ2)
+        
+
+            bkg_ws = 'bkg' if mtd.doesExist('bkg') else None
+
+            bkg_data_ws = md+'_bkg_data' if mtd.doesExist('bkg') else None
+            bkg_norm_ws = md+'_bkg_data' if mtd.doesExist('bkg') else None
+
+            tmp_data_ws = md+'_tmp_data'
+            tmp_norm_ws = md+'_tmp_norm'
+
+            tmp_data_ws = tmp_data_ws if mtd.doesExist(tmp_data_ws) else None
+            tmp_norm_ws = tmp_norm_ws if mtd.doesExist(tmp_norm_ws) else None
+
+            tmp_bkg_data_ws = md+'_tmp_bkg_data'
+            tmp_bkg_norm_ws = md+'_tmp_bkg_norm'
+
+            if mtd.doesExist(tmp_bkg_data_ws):
+                tmp_bkg_data_ws = None
+
+            if mtd.doesExist(tmp_bkg_norm_ws):
+                tmp_bkg_norm_ws = None
+
+            MDNorm(InputWorkspace='md',
+                   SolidAngleWorkspace='sa',
+                   FluxWorkspace='flux',
+                   BackgroundWorkspace=bkg_ws,
+                   QDimension0='{},{},{}'.format(*v0),
+                   QDimension1='{},{},{}'.format(*v1),
+                   QDimension2='{},{},{}'.format(*v2),
+                   Dimension0Name='QDimension0',
+                   Dimension1Name='QDimension1',
+                   Dimension2Name='QDimension2',
+                   Dimension0Binning='{},{},{}'.format(Q0_min,dQ0,Q0_max),
+                   Dimension1Binning='{},{},{}'.format(Q1_min,dQ1,Q1_max),
+                   Dimension2Binning='{},{},{}'.format(Q2_min,dQ2,Q2_max),
+                   SymmetryOperations=symmetry,
+                   TemporaryDataWorkspace=tmp_data_ws,
+                   TemporaryNormalizationWorkspace=tmp_norm_ws,
+                   TemporaryBackgroundDataWorkspace=tmp_bkg_data_ws,
+                   TemporaryBackgroundNormalizationWorkspace=tmp_bkg_norm_ws,
+                   OutputWorkspace=md+'_result',
+                   OutputDataWorkspace=md+'_data',
+                   OutputNormalizationWorkspace=md+'_norm',
+                   OutputBackgroundDataWorkspace=bkg_data_ws,
+                   OutputBackgroundNormalizationWorkspace=bkg_norm_ws)

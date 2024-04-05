@@ -3,6 +3,7 @@ import tempfile
 
 from garnet.reduction.plan import ReductionPlan
 from garnet.reduction.integration import Integration
+from garnet.reduction.normalization import Normalization
 
 filepath = os.path.dirname(os.path.abspath(__file__))
 
@@ -89,3 +90,21 @@ def test_integration_plan():
     integrate = Integration(garnet_plan.plan)
 
     assert integrate is not None
+
+def test_normalization_plan():
+
+    garnet_plan = ReductionPlan()
+
+    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.json')
+
+    garnet_plan.load_plan(reduction_plan)
+
+    params = garnet_plan.plan.get('Normalization')
+
+    assert params is not None
+
+    assert params['Symmetry'] == 'm-3m'
+
+    normalize = Normalization(garnet_plan.plan)
+
+    assert normalize is not None

@@ -24,7 +24,7 @@ class Integration:
         self.params = plan['Integration']
 
         self.validate_params()
-    
+
     def validate_params(self):
 
         assert self.params['Cell'] in lattice_group.keys()
@@ -39,16 +39,16 @@ class Integration:
         if self.params.get('ModVec3') is None:
             self.params['ModVec3'] = [0,0,0]
 
-        if self.params['MaxOrder'] is None:
+        if self.params.get('MaxOrder') is None:
             self.params['MaxOrder'] = 0
-        if self.params['CrossTerms'] is None:
+        if self.params.get('CrossTerms') is None:
             self.params['CrossTerms'] = False
 
         assert len(self.params['ModVec1']) == 3
         assert len(self.params['ModVec2']) == 3
         assert len(self.params['ModVec3']) == 3
 
-        assert self.params['MaxOrder'] > -1
+        assert self.params['MaxOrder'] >= 0
         assert type(self.params['CrossTerms']) is bool
 
     @staticmethod
@@ -63,8 +63,8 @@ class Integration:
 
     def integrate(self):
 
-        output_file = os.path.join(self.plan['OutputPath'], 
-                                   'integration', 
+        output_file = os.path.join(self.plan['OutputPath'],
+                                   'integration',
                                    self.plan['OutputName']+'.nxs')
 
         data = DataModel(beamlines[self.plan['Instrument']])
@@ -119,7 +119,7 @@ class Integration:
             sphere = PeakSphere(r_cut)
             r_cut = sphere.fit(radius, sig_noise)
 
-            peaks.integrate_peaks('md_corr', 
+            peaks.integrate_peaks('md_corr',
                                   'peaks',
                                   r_cut,
                                   method='ellipsoid')
@@ -143,14 +143,14 @@ class Integration:
                 d, n, Q0, Q1, Q2 = data.normalize_to_Q_sample('md_data',
                                                               extents,
                                                               bins)
-    
+
                 ellipsoid = PeakEllipsoid(*params)
 
                 *params, result = ellipsoid.fit(Q0, Q1, Q2, d, n)
 
                 peak.set_peak_shape(i, *params)
 
-                intens, sig = ellipsoid.integrate(Q0, 
+                intens, sig = ellipsoid.integrate(Q0,
                                                   Q1,
                                                   Q2,
                                                   d,
@@ -170,12 +170,12 @@ class Integration:
     def bin_extent(self, c0, c1, c2, r0, r1, r2, v0, v1, v2, r_cut):
         """
         Region extent and binning around a peak based on its initial shape.
-        
+
         """
 
         r0 = r_cut if r0 > r_cut or np.isclose(r0, 0) else r0
         r1 = r_cut if r1 > r_cut or np.isclose(r1, 0) else r1
-        r2 = r_cut if r2 > r_cut or np.isclose(r2, 0) else r2        
+        r2 = r_cut if r2 > r_cut or np.isclose(r2, 0) else r2
 
         W = np.column_stack([v0, v1, v2])
         V = np.diag([r0**2, r1**2, r2**2])
@@ -187,7 +187,9 @@ class Integration:
         dQ0, dQ1, dQ2 = dQ
 
         bins = [41, 41, 41]
-        extents = [c0-dQ0, c0+dQ0, c1-dQ1, c1+dQ1, c2-dQ2, c2+dQ2]
+        extents = [[c0-dQ0, c0+dQ0],
+                   [c1-dQ1, c1+dQ1],
+                   [c2-dQ2, c2+dQ2]]
 
         return bins, extents
 
@@ -200,9 +202,9 @@ class Integration:
 
     def combine(self, files):
 
-        output_file = os.path.join(self.plan['OutputPath'], 
-                                   'integration', 
-                                   self.plan['OutputName']+'.nxs')        
+        output_file = os.path.join(self.plan['OutputPath'],
+                                   'integration',
+                                   self.plan['OutputName']+'.nxs')
 
         peaks = PeaksModel()
 

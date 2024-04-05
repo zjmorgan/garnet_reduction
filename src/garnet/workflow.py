@@ -22,4 +22,9 @@ if __name__ == '__main__':
     pt = ParallelTasks(Integration.integrate_parallel,
                        Integration.combine_parallel)
 
+    max_proc = os.cpu_count()
+
+    if n_proc > max_proc:
+        n_proc = max_proc
+
     pt.run_tasks(rp.plan, n_proc)
