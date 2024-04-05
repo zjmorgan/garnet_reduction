@@ -161,6 +161,8 @@ class Integration:
 
             peaks.combine_peaks('peaks', 'combine')
 
+        peaks.remove_weak_peaks('combine')
+
         peaks.save_peaks(output_file, 'combine')
 
         return output_file
@@ -208,7 +210,6 @@ class Integration:
 
             peaks.load_peaks(file, 'tmp')
             peaks.combine_peaks('tmp', 'combine')
-            os.remove(file)
 
         if mtd.doesExist('combine'):
 
@@ -436,7 +437,6 @@ class PeakEllipsoid:
                np.diff(x1, axis=1).mean()*\
                np.diff(x2, axis=2).mean()
 
-
     def fit(self, x0, x1, x2, d, n):
 
         mask = (d > 0) & (n > 0)
@@ -599,6 +599,6 @@ class PeakEllipsoid:
         scale = np.sum(pk)*d3x
 
         intens = (num/den)*scale
-        sig = np.sqrt(var/den**2)*scale
+        sig = np.sqrt(var)/den*scale
 
         return intens, sig

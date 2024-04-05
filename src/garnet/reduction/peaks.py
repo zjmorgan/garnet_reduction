@@ -538,13 +538,9 @@ class PeaksModel:
         hkl : list
             Miller index.
 
-        Returns
-        -------
-        None.
-
         """
 
-        AddPeakHKL(Workspace='peak', HKL=hkl)
+        AddPeakHKL(Workspace=peaks, HKL=hkl)
 
     def set_goniometer(self, peaks, R):
         """
