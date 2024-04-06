@@ -1,6 +1,8 @@
 import os
 
 import multiprocess as multiprocessing
+multiprocessing.set_start_method('spawn', force=True)
+
 import numpy as np
 
 from mantid import config
@@ -40,7 +42,6 @@ class ParallelTasks:
         os.environ['OMP_NUM_THREADS'] = '1'
         os.environ['TBB_THREAD_ENABLED'] = '0'
 
-        multiprocessing.set_start_method('spawn', force=True)
         with multiprocessing.get_context('spawn').Pool(n_proc) as pool:
             self.results = pool.starmap(self.safe_function_wrapper, join_args)
             if self.combine is not None:
