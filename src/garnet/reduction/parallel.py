@@ -5,6 +5,7 @@ import numpy as np
 
 from mantid import config
 config['Q.convention'] = 'Crystallography'
+
 class ParallelTasks:
 
     def __init__(self, function, combine=None):
@@ -34,10 +35,11 @@ class ParallelTasks:
 
         config['MultiThreaded.MaxCores'] == 1
         os.environ['OPENBLAS_NUM_THREADS'] = '1'
+        os.environ['MKL_NUM_THREADS'] = '1'
+        os.environ['NUMEXPR_NUM_THREADS'] = '1'
         os.environ['OMP_NUM_THREADS'] = '1'
-        os.environ['_SC_NPROCESSORS_ONLN'] = '1'
 
-        multiprocessing.set_start_method('spawn', force=True)    
+        multiprocessing.set_start_method('spawn', force=True)
         with multiprocessing.get_context('spawn').Pool(n_proc) as pool:
             self.results = pool.starmap(self.safe_function_wrapper, join_args)
             if self.combine is not None:
@@ -46,7 +48,7 @@ class ParallelTasks:
             pool.join()
 
     def safe_function_wrapper(self, *args, **kwargs):
-    
+
         try:
             return self.function(*args, **kwargs)
         except Exception as e:
