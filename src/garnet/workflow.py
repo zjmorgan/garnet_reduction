@@ -10,8 +10,9 @@ sys.path.append(directory)
 from garnet.reduction.plan import ReductionPlan
 from garnet.reduction.parallel import ParallelTasks
 from garnet.reduction.integration import Integration
+from garnet.reduction.normalization import Normalization
 
-filename, n_proc = sys.argv[1], int(sys.argv[2])
+filename, reduction, n_proc = sys.argv[1], sys.argv[2], int(sys.argv[3])
 
 if __name__ == '__main__':
 
@@ -19,8 +20,14 @@ if __name__ == '__main__':
 
     rp.load_plan(filename)
 
-    pt = ParallelTasks(Integration.integrate_parallel,
-                       Integration.combine_parallel)
+    if reduction == 'int':
+        func = Integration.integrate_parallel
+        comb = Integration.combine_parallel
+    elif reduction == 'norm':
+        func = Normalization.normalize_parallel
+        comb = Normalization.combine_parallel
+
+    pt = ParallelTasks(func, comb)
 
     max_proc = os.cpu_count()
 

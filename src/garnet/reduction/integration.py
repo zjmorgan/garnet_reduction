@@ -212,6 +212,7 @@ class Integration:
 
             peaks.load_peaks(file, 'tmp')
             peaks.combine_peaks('tmp', 'combine')
+            os.remove(file)
 
         if mtd.doesExist('combine'):
 
@@ -224,10 +225,6 @@ class Integration:
 
             ub = UBModel('combine')
             ub.save_UB(ub_file)
-
-        for file in files:
-
-            os.remove(file)
 
 class PeakSphere:
 

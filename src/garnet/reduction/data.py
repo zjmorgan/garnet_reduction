@@ -17,12 +17,19 @@ from mantid.simpleapi import (Load,
                               BinMD,
                               DivideMD,
                               MDNorm,
+                              ConvertWANDSCDtoQ,
                               ConvertUnits,
                               CropWorkspaceForMDNorm,
                               ClearUB,
                               LoadIsawUB,
                               CloneWorkspace,
                               PlusMD,
+                              MinusMD,
+                              SaveMD,
+                              LoadMD,
+                              CreateSingleValuedWorkspace,
+                              AddSampleLog,
+                              CopySample,
                               mtd)
 
 def DataModel(instrument_config):
@@ -49,16 +56,16 @@ class BaseDataModel:
         self.raw_file_path = raw_file_path
 
         self.gon_axis = 6*[None]
-        gon_axis_names = self.instrument_config.get('GoniometerAxisNames')
         gon = self.instrument_config.get('Goniometer')
+        gon_axis_names = self.instrument_config.get('GoniometerAxisNames')
         if gon_axis_names is None:
             gon_axis_names = list(gon.keys())
+        axes = list(gon.items())
 
         gon_ind = 0
-        for i, name in enumerate(gon.keys()):
-            axis = gon[name]
-            if gon_axis_names is not None:
-                name = gon_axis_names[i]
+        for i, name in enumerate(gon_axis_names):
+            axis = axes[i][1]
+            if name is not None:
                 self.gon_axis[gon_ind] = ','.join(5*['{}']).format(name, *axis)
                 gon_ind += 1
 
@@ -136,6 +143,7 @@ class BaseDataModel:
            Name of raw data.
 
         """
+        print(self.gon_axis)
 
         SetGoniometer(Workspace=ws,
                       Goniometers='None, Specify Individually',
@@ -258,14 +266,14 @@ class BaseDataModel:
 
     def combine_histograms(self, ws, merge):
         """
-        Merge two peaks workspaces into one.
+        Add two histogram workspaces together.
 
         Parameters
         ----------
         ws : str
-            Name of histgram to be added.
+            Name of histogram to be added.
         merge : str
-            Name of histgram to be accumulated.
+            Name of histogram to be accumulated.
 
         """
 
@@ -280,11 +288,123 @@ class BaseDataModel:
                    RHSWorkspace=ws,
                    OutputWorkspace=merge)
 
+    def divide_histograms(self, ws, num, den):
+        """
+        Divide two histogram workspaces.
+
+        Parameters
+        ----------
+        ws : str
+            Name of resulting histogram.
+        num : str
+            Name of numerator histogram.
+        den : str
+            Name of denominator histogram.
+
+        """
+
+        DivideMD(LHSWorkspace=num,
+                 RHSWorkspace=den,
+                 OutputWorkspace=ws)
+
+    def subtract_histograms(self, ws, ws1, ws2):
+        """
+        Difference between two histograms.
+
+        Parameters
+        ----------
+        ws : str
+            Name of resulting histogram.
+        ws1 : str
+            Name of first histogram.
+        ws2 : str
+            Name of second histogram.
+
+        """
+
+        MinusMD(LHSWorkspace=ws1,
+                RHSWorkspace=ws2,
+                OutputWorkspace=ws)
+
+    def load_histograms(self, filename, ws):
+        """
+        Load histograms file.
+
+        Parameters
+        ----------
+        filename : str
+            Name of peaks file with extension .nxs.
+        ws : str
+            Name of histogram to be added.
+
+        """
+
+        LoadMD(Filename=filename,
+               OutputWorkspace=ws)
+
+    def save_histograms(self, filename, ws):
+        """
+        Save histograms file.
+
+        Parameters
+        ----------
+        filename : str
+            Name of peaks file with extension .nxs.
+        ws : str
+            Name of histogram to be added.
+
+        """
+
+        SaveMD(Filename=filename,
+               InputWorkspace=ws,
+               SaveHistory=False,
+               SaveInstrument=False,
+               SaveSample=False,
+               SaveLogs=False)
+
+    def add_UBW(self, ws, ub_file, projections):
+        """
+        Attach sample UB and projection matrix to workspace
+
+        Parameters
+        ----------
+        ws : str
+            Name of histogram to be added.
+        filename : str
+            Name of UB file with extension .mat.
+
+        """
+
+        CreateSingleValuedWorkspace(OutputWorkspace='ws')
+
+        W = np.column_stack(projections)
+
+        W_MATRIX = ','.join(9*['{}']).format(*W.flatten())
+
+        LoadIsawUB(InputWorkspace='ws', Filename=ub_file)
+
+        if mtd.doesExist(ws):
+            AddSampleLog(Workspace=ws,
+                         LogName='W_MATRIX',
+                         LogText=W_MATRIX,
+                         LogType='String')
+
+            run = mtd[ws].getExperimentInfo(0).run()
+            run.addProperty('W_MATRIX', list(W.flatten()*1.), True)
+
+            CopySample(InputWorkspace='ws',
+                       OutputWorkspace=ws,
+                       CopyName=False,
+                       CopyMaterial=False,
+                       CopyEnvironment=False,
+                       CopyLattice=True,
+                       CopyOrientationOnly=False)
+
 class MonochromaticData(BaseDataModel):
 
     def __init__(self, instrument_config):
 
-        super(MonochromaticData).__init__(instrument_config)
+        super(MonochromaticData, self).__init__(instrument_config)
 
         self.laue = False
 
@@ -448,6 +568,87 @@ class MonochromaticData(BaseDataModel):
             norm, _, Q0, Q1, Q2 = self.extract_bin_info(md+'_norm')
 
             return data, norm, Q0, Q1, Q2
+
+    def normalize_to_hkl(self, ws, projections, extents, bins, symmetry=None):
+        """
+        Normalizae to binned hkl.
+
+        Parameters
+        ----------
+        ws : str
+            3D detector counts vs rotation index data.
+        projections : list
+            Projection axis vectors.
+        extents : list
+            Min/max pairs defining the bin center limits.
+        bins : list
+            Number of bins.
+        symmetry : str, optional
+            Laue point group. The default is None.
+
+        """        
+
+        if mtd.doesExist(ws) and mtd.doesExist('van'):
+
+            v0, v1, v2 = projections
+
+            (Q0_min, Q0_max), (Q1_min, Q1_max), (Q2_min, Q2_max) = extents
+
+            nQ0, nQ1, nQ2 = bins
+
+            Q0_min, Q0_max, dQ0 = self.calculate_binning_from_bins(Q0_min,
+                                                                   Q0_max, nQ0)
+
+            Q1_min, Q1_max, dQ1 = self.calculate_binning_from_bins(Q1_min,
+                                                                   Q1_max, nQ1)
+
+            Q2_min, Q2_max, dQ2 = self.calculate_binning_from_bins(Q2_min,
+                                                                   Q2_max, nQ2)
+
+
+            bkg_ws = 'bkg' if mtd.doesExist('bkg') else None
+
+            bkg_data = ws+'_bkg_data' if mtd.doesExist('bkg') else None
+            bkg_norm = ws+'_bkg_norm' if mtd.doesExist('bkg') else None
+
+            _data = ws+'_tmp_data'
+            _norm = ws+'_tmp_norm'
+
+            _data = _data if mtd.doesExist(_data) else None
+            _norm = _norm if mtd.doesExist(_norm) else None
+
+            __data = ws+'_tmp_bkg_data'
+            __norm = ws+'_tmp_bkg_norm'
+
+            if not mtd.doesExist(__data):
+                __data = None
+
+            if not mtd.doesExist(__norm):
+                __norm = None
+
+            ConvertWANDSCDtoQ(InputWorkspace=ws,
+                              NormalisationWorkspace='van',
+                              UBWorkspace=ws,
+                              BackgroundWorkspace=bkg_ws,
+                              OutputWorkspace='HKL',
+                              OutputDataWorkspace=ws+'_data',
+                              OutputNormalizationWorkspace=ws+'_norm',
+                              OutputBackgroundDataWorkspace=bkg_data,
+                              OutputBackgroundNormalizationWorkspace=bkg_norm,
+                              NormaliseBy='Time',
+                              Frame='HKL',
+                              SymmetryOperations=symmetry,
+                              KeepTemporaryWorkspaces=True,
+                              TemporaryDataWorkspace=_data,
+                              TemporaryNormalizationWorkspace=_norm,
+                              TemporaryBackgroundDataWorkspace=__data,
+                              TemporaryBackgroundNormalizationWorkspace=__norm,
+                              Uproj='{},{},{}'.format(*v0),
+                              Vproj='{},{},{}'.format(*v1),
+                              Wproj='{},{},{}'.format(*v2),
+                              BinningDim0='{},{},{}'.format(Q0_min,Q0_max,nQ0),
+                              BinningDim1='{},{},{}'.format(Q1_min,Q1_max,nQ1),
+                              BinningDim2='{},{},{}'.format(Q2_min,Q2_max,nQ2))
 
 class LaueData(BaseDataModel):
 
@@ -661,12 +862,29 @@ class LaueData(BaseDataModel):
             norm, _, Q0, Q1, Q2 = self.extract_bin_info(md+'_norm')
 
             return data, norm, Q0, Q1, Q2
-    
+
     def normalize_to_hkl(self, md, projections, extents, bins, symmetry=None):
+        """
+        Normalizae to binned hkl.
+
+        Parameters
+        ----------
+        md : str
+            3D Q-sample data.
+        projections : list
+            Projection axis vectors.
+        extents : list
+            Min/max pairs defining the bin center limits.
+        bins : list
+            Number of bins.
+        symmetry : str, optional
+            Laue point group. The default is None.
+
+        """
 
         if mtd.doesExist(md) and mtd.doesExist('sa') and mtd.doesExist('flux'):
 
-            v0, v1, v2 = projections            
+            v0, v1, v2 = projections
 
             (Q0_min, Q0_max), (Q1_min, Q1_max), (Q2_min, Q2_max) = extents
 
@@ -680,27 +898,27 @@ class LaueData(BaseDataModel):
 
             Q2_min, Q2_max, dQ2 = self.calculate_binning_from_bins(Q2_min,
                                                                    Q2_max, nQ2)
-        
+
 
             bkg_ws = 'bkg' if mtd.doesExist('bkg') else None
 
-            bkg_data_ws = md+'_bkg_data' if mtd.doesExist('bkg') else None
-            bkg_norm_ws = md+'_bkg_data' if mtd.doesExist('bkg') else None
+            bkg_data = md+'_bkg_data' if mtd.doesExist('bkg') else None
+            bkg_norm = md+'_bkg_norm' if mtd.doesExist('bkg') else None
 
-            tmp_data_ws = md+'_tmp_data'
-            tmp_norm_ws = md+'_tmp_norm'
+            _data = md+'_tmp_data'
+            _norm = md+'_tmp_norm'
 
-            tmp_data_ws = tmp_data_ws if mtd.doesExist(tmp_data_ws) else None
-            tmp_norm_ws = tmp_norm_ws if mtd.doesExist(tmp_norm_ws) else None
+            _data = _data if mtd.doesExist(_data) else None
+            _norm = _norm if mtd.doesExist(_norm) else None
 
-            tmp_bkg_data_ws = md+'_tmp_bkg_data'
-            tmp_bkg_norm_ws = md+'_tmp_bkg_norm'
+            __data = md+'_tmp_bkg_data'
+            __norm = md+'_tmp_bkg_norm'
 
-            if mtd.doesExist(tmp_bkg_data_ws):
-                tmp_bkg_data_ws = None
+            if not mtd.doesExist(__data):
+                __data = None
 
-            if mtd.doesExist(tmp_bkg_norm_ws):
-                tmp_bkg_norm_ws = None
+            if not mtd.doesExist(__norm):
+                __norm = None
 
             MDNorm(InputWorkspace='md',
                    SolidAngleWorkspace='sa',
@@ -716,12 +934,12 @@ class LaueData(BaseDataModel):
                    Dimension1Binning='{},{},{}'.format(Q1_min,dQ1,Q1_max),
                    Dimension2Binning='{},{},{}'.format(Q2_min,dQ2,Q2_max),
                    SymmetryOperations=symmetry,
-                   TemporaryDataWorkspace=tmp_data_ws,
-                   TemporaryNormalizationWorkspace=tmp_norm_ws,
-                   TemporaryBackgroundDataWorkspace=tmp_bkg_data_ws,
-                   TemporaryBackgroundNormalizationWorkspace=tmp_bkg_norm_ws,
+                   TemporaryDataWorkspace=_data,
+                   TemporaryNormalizationWorkspace=_norm,
+                   TemporaryBackgroundDataWorkspace=__data,
+                   TemporaryBackgroundNormalizationWorkspace=__norm,
                    OutputWorkspace=md+'_result',
                    OutputDataWorkspace=md+'_data',
                    OutputNormalizationWorkspace=md+'_norm',
-                   OutputBackgroundDataWorkspace=bkg_data_ws,
-                   OutputBackgroundNormalizationWorkspace=bkg_norm_ws)
+                   OutputBackgroundDataWorkspace=bkg_data,
+                   OutputBackgroundNormalizationWorkspace=bkg_norm)
