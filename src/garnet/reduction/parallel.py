@@ -1,6 +1,6 @@
 import os
 
-import multiprocessing
+import multiprocess as multiprocessing
 import numpy as np
 
 from mantid import config
