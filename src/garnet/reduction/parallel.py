@@ -33,11 +33,12 @@ class ParallelTasks:
 
         join_args = [(plan, s, proc) for proc, s in enumerate(split)]
 
-        config['MultiThreaded.MaxCores'] == 1
+        config['MultiThreaded.MaxCores'] == '1'
         os.environ['OPENBLAS_NUM_THREADS'] = '1'
         os.environ['MKL_NUM_THREADS'] = '1'
         os.environ['NUMEXPR_NUM_THREADS'] = '1'
         os.environ['OMP_NUM_THREADS'] = '1'
+        os.environ['TBB_THREAD_ENABLED'] = '0'
 
         multiprocessing.set_start_method('spawn', force=True)
         with multiprocessing.get_context('spawn').Pool(n_proc) as pool:
