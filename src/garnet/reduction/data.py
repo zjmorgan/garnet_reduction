@@ -72,7 +72,7 @@ class BaseDataModel:
         wl = instrument_config['Wavelength']
 
         self.wavelength_band = wl if type(wl) is list else [0.98*wl, 1.02*wl]
-        self.lamda = np.mean(wl) if type(wl) is list else wl
+        self.wavelength = np.mean(wl) if type(wl) is list else wl
 
         self.k_min = 2*np.pi/np.max(self.wavelength_band)
         self.k_max = 2*np.pi/np.min(self.wavelength_band)
@@ -143,7 +143,6 @@ class BaseDataModel:
            Name of raw data.
 
         """
-        print(self.gon_axis)
 
         SetGoniometer(Workspace=ws,
                       Goniometers='None, Specify Individually',
@@ -444,7 +443,7 @@ class MonochromaticData(BaseDataModel):
             self.theta_max = 0.5*np.max(run.getProperty('TwoTheta').value)
             self.scale = run.getProperty('duration').value
 
-        self.Q_max = 4*np.pi/self.lamda*np.sin(0.5*self.theta_max)
+        self.Q_max = 4*np.pi/self.wavelength*np.sin(0.5*self.theta_max)
 
         self.set_goniometer(histo_name)
 
@@ -542,6 +541,8 @@ class MonochromaticData(BaseDataModel):
 
         if mtd.doesExist(md) and mtd.doesExist('norm'):
 
+            extents = np.array(extents).flatten().tolist()
+
             BinMD(InputWorkspace=md,
                   AxisAligned=False,
                   BasisVector0='Q_sample_x,Angstrom^-1,1.0,0.0,0.0',
@@ -630,7 +631,7 @@ class MonochromaticData(BaseDataModel):
                               NormalisationWorkspace='van',
                               UBWorkspace=ws,
                               BackgroundWorkspace=bkg_ws,
-                              OutputWorkspace='HKL',
+                              OutputWorkspace=ws+'_result',
                               OutputDataWorkspace=ws+'_data',
                               OutputNormalizationWorkspace=ws+'_norm',
                               OutputBackgroundDataWorkspace=bkg_data,

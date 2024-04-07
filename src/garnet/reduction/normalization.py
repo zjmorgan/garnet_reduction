@@ -46,6 +46,7 @@ class Normalization:
     def normalize_parallel(plan, runs, proc):
 
         plan['Runs'] = runs
+        print(runs)
         plan['OutputName'] += '_p{}'.format(proc)
 
         instance = Normalization(plan)

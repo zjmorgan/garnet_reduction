@@ -211,7 +211,10 @@ class PeaksModel:
 
         if HasUB(Workspace=ws):
 
-            ol = mtd[ws].sample().getOrientedLattice()
+            if hasattr(mtd[ws], 'sample'):
+                ol = mtd[ws].sample().getOrientedLattice()
+            else:
+                ol = mtd[ws].getExperimentInfo(0).sample().getOrientedLattice()
 
             return max([ol.a(), ol.b(), ol.c()])
 
@@ -312,7 +315,6 @@ class PeaksModel:
                               ModVector3=mod_vec_3,
                               MaxOrder=max_order,
                               CrossTerms=cross_terms,
-                              SaveModulationInfo=True,
                               IncludeIntegerHKL=False,
                               IncludeAllPeaksInRange=True,
                               WavelengthMin=lamda_min,
@@ -341,7 +343,7 @@ class PeaksModel:
 
         for col in columns:
 
-            SortPeaksWorkspace(InputWorkpace=peaks,
+            SortPeaksWorkspace(InputWorkspace=peaks,
                                ColumnNameToSortBy=col,
                                SortAscending=False,
                                OutputWorkspace=peaks)
@@ -357,7 +359,7 @@ class PeaksModel:
 
         """
 
-        SortPeaksWorkspace(InputWorkpace=peaks,
+        SortPeaksWorkspace(InputWorkspace=peaks,
                            ColumnNameToSortBy='DSpacing',
                            SortAscending=False,
                            OutputWorkspace=peaks)
@@ -383,6 +385,33 @@ class PeaksModel:
 
                 DeleteTableRows(TableWorkspace=peaks, Rows=no)
 
+    def get_all_goniometer_matrices(self, ws):
+        """
+        Extract all goniometer matrices.
+
+        Parameters
+        ----------
+        ws : str
+            Name of workspace with goniometer indexing.
+
+        Returns
+        -------
+        Rs: list
+            Goniometer matrices.
+
+        """
+        Rs = []
+
+        for ei in range(mtd[ws].getNumExperimentInfo()):
+
+            run = mtd[ws].getExperimentInfo(ei).run()
+
+            n_gon = run.getNumGoniometers()
+
+            Rs += [run.getGoniometer(i).getR() for i in range(n_gon)]
+
+        return np.array(Rs)
+    
     def renumber_runs_by_index(self, ws, peaks):
         """
         Re-label the runs by index based on goniometer setting.
@@ -396,11 +425,7 @@ class PeaksModel:
 
         """
 
-        run = mtd[ws].getExperimentInfo(0).run()
-
-        n_gon = run.getNumGoniometers()
-
-        Rs = np.array([run.getGoniometer(i).getR() for i in range(n_gon)])
+        Rs = self.get_all_goniometer_matrices(ws)
 
         for no in range(mtd[peaks].getNumberPeaks()):
 
@@ -556,6 +581,7 @@ class PeaksModel:
         """
         
         mtd[peaks].run().getGoniometer().setR(R)
+
 
 class PeakModel:
 
