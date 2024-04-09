@@ -161,11 +161,11 @@ class Integration:
                                                       n,
                                                       *params)
 
-                    # Q0, Q1, Q2, r0, r1, r2, *_ = params
-                    # vol = r0*r1*r2/r_cut**3
+                    Q0, Q1, Q2, r0, r1, r2, *_ = params
+                    vol = r0*r1*r2/r_cut**3
 
-                    # if vol > 2 or vol < 0.2:
-                    #     sig = intens
+                    if vol > 2 or vol < 0.2:
+                         sig = intens
 
                     peak.set_peak_intensity(i, intens, sig)
 

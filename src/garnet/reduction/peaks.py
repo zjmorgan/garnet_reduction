@@ -695,9 +695,11 @@ class PeakModel:
 
         mtd[self.peaks].getPeak(no).setPeakShape(shape)
 
-class StatisticsModel:
+class PeaksStatisticsModel(PeaksModel):
 
     def __init__(self, peaks):
+
+        super(PeaksModel, self).__init__(peaks)        
 
         self.peaks = peaks+'_stats'
 
@@ -716,3 +718,5 @@ class StatisticsModel:
         for peak in mtd[self.peaks]:
             peak.setIntensity(scale*peak.getIntensity())
             peak.setSigmaIntensity(scale*peak.getSigmaIntensity())
+
+    
