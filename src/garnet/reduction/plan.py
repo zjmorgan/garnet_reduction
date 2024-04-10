@@ -144,3 +144,75 @@ class ReductionPlan:
         run_str = ','.join(result)
 
         return run_str
+
+    def generate_plan(self, instrument):
+        """
+        Create a template plan.
+
+        Parameters
+        ----------
+        instrument : str
+            Beamline name.
+
+        """
+
+        plan = {}
+
+        assert instrument in beamlines.keys()
+        params = beamlines[instrument]
+
+        plan[instrument] = instrument
+        plan['IPTS'] = 0
+        plan['Runs'] = '1:2'
+        if instrument == 'DEMAND':
+            plan['Experiment'] = 1
+
+        plan['UBFile'] = ''
+        plan['Vanadium'] = ''
+
+        if params['Facility'] == 'SNS':
+            plan['FluxFile'] = ''
+            plan['MaskFile'] = None
+            plan['DetectorCalibration'] = None
+
+        if instrument == 'CORELLI':
+            plan['TubeCalibration'] = '/SNS/CORELLI/shared/calibration/tube'\
+                                    + '/calibration_corelli_20200109.nxs.h5'
+            plan['Elastic'] = False
+
+        self.plan = plan
+
+    def template_integration(self, instrument):
+        """
+        Generate template integration plan.
+
+        Parameters
+        ----------
+        instrument : str
+            Beamline name.
+
+        Returns
+        -------
+        params : dict
+            Integration plan.
+
+        """
+
+        params = {}
+        params['Cell'] = 'Triclinic'
+        params['Centering'] = 'P'
+        params['ModVec1'] = [0,0,0]
+        params['ModVec2'] = [0,0,0]
+        params['ModVec3'] = [0,0,0]
+        params['MaxOrder'] = 1
+        params['MinD'] = 0.7
+        params['Radius'] = 0.25
+
+        return params
+
+#     'Normalization': {
+#         'Symmetry' : 'm-3m',
+#         'Projections': [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+#         'Extents': [[-10, 10], [-10, 10], [-10, 10]],
+#         'Bins': [201, 201, 201],
+#     },
