@@ -12,7 +12,7 @@ from garnet.reduction.parallel import ParallelTasks
 from garnet.reduction.integration import Integration
 from garnet.reduction.normalization import Normalization
 
-filename, reduction, *args = sys.argv[1], sys.argv[2], sys.argv[3:]
+filename, reduction, arg = sys.argv[1], sys.argv[2], sys.argv[3]
 
 inst_dict = {'corell': 'CORELLI', 
              'bl9': 'CORELLI',
@@ -27,11 +27,10 @@ inst_dict = {'corell': 'CORELLI',
              'wand2': 'WAND²',
              'hb2c': 'WAND²'}
 
-if type(args[0]) is int:
-    n_proc = int(args[0])
+if type(arg) is int:
+    n_proc = int(arg)
 else:
-    instrument = inst_dict[args[0].lower()]
-    filename = args[1]
+    instrument = inst_dict[arg.lower()]
     assert filename.endswith('.json')
 
 if __name__ == '__main__':
@@ -41,7 +40,9 @@ if __name__ == '__main__':
     if reduction == 'temp':
 
         rp.generate_plan(instrument)
-        rp.save_plan(os.path.abspath(filename))
+        filename = os.path.abspath(filename)
+        if not os.path.exists(filename):
+            rp.save_plan(filename)
 
     else:
 

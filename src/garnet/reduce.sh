@@ -9,8 +9,12 @@ REDUCTION="norm"
 while getopts hni FLAG; do
     case $FLAG in
         h)
-            echo "reduction.json processes"
+            echo "/SNS/software/scd/reduce.sh -i[n] reduction.json processes"
+            echo "/SNS/software/scd/reduce.sh -t reduction.json instrument"
             exit 1
+            ;;
+        t)
+            REDUCTION="temp"
             ;;
         n)
             REDUCTION="norm"
@@ -24,14 +28,12 @@ done
 shift $((OPTIND-1))
 
 if [[ $# -ne 2 ]]; then
-    echo "Requires input text file and number of processes"
+    echo "Requires input json file and number of processes"
     exit 1
 fi
 
 INPUT=$1
 PROCESSES=$2
-
-#nsd-conda-wrap.sh scd-reduction-tools-dev --classic $INSCAPE $INPUT $PROCESSES
 
 CONDA="/opt/anaconda/bin/activate"
 if [ ! -f $CONDA ]; then
