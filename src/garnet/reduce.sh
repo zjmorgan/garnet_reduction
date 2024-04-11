@@ -6,7 +6,7 @@ echo $WORKFLOW
 
 REDUCTION="norm"
 
-while getopts hni FLAG; do
+while getopts htni FLAG; do
     case $FLAG in
         h)
             echo "/SNS/software/scd/reduce.sh -i[n] reduction.json processes"
