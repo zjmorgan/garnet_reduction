@@ -161,14 +161,15 @@ class ReductionPlan:
         assert instrument in beamlines.keys()
         params = beamlines[instrument]
 
-        plan[instrument] = instrument
+        plan['Instrument'] = instrument
         plan['IPTS'] = 0
         plan['Runs'] = '1:2'
+
         if instrument == 'DEMAND':
             plan['Experiment'] = 1
 
         plan['UBFile'] = ''
-        plan['Vanadium'] = ''
+        plan['VanadiumFile'] = ''
 
         if params['Facility'] == 'SNS':
             plan['FluxFile'] = ''
@@ -181,6 +182,9 @@ class ReductionPlan:
             plan['Elastic'] = False
 
         self.plan = plan
+
+        self.plan['Integration'] = self.template_integration(instrument)
+        self.plan['Normalization'] = self.template_normalization()
 
     def template_integration(self, instrument):
         """
@@ -198,21 +202,43 @@ class ReductionPlan:
 
         """
 
+        inst_config = beamlines[instrument]
+
+        wl = inst_config['Wavelength']
+        min_d = max(wl)/2 if type(wl) is list else wl/2
+
         params = {}
         params['Cell'] = 'Triclinic'
         params['Centering'] = 'P'
         params['ModVec1'] = [0,0,0]
         params['ModVec2'] = [0,0,0]
         params['ModVec3'] = [0,0,0]
-        params['MaxOrder'] = 1
-        params['MinD'] = 0.7
-        params['Radius'] = 0.25
+        params['MaxOrder'] = 0
+        params['CrossTerms'] = False
+        params['MinD'] = min_d
+        params['Radius'] = 0.2
 
         return params
 
-#     'Normalization': {
-#         'Symmetry' : 'm-3m',
-#         'Projections': [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-#         'Extents': [[-10, 10], [-10, 10], [-10, 10]],
-#         'Bins': [201, 201, 201],
-#     },
+    def template_normalization(self):
+        """
+        Generate template integration plan.
+
+        Parameters
+        ----------
+        instrument : str
+            Beamline name.
+
+        Returns
+        -------
+        params : dict
+            Integration plan.
+        """
+
+        params = {}
+        params['Symmetry'] = None
+        params['Projections'] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        params['Extents'] = [[-10, 10], [-10, 10], [-10, 10]]
+        params['Bins'] = [201, 201, 201]
+
+        return params

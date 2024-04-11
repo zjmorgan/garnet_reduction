@@ -33,7 +33,7 @@ class Normalization:
             self.params['Symmetry'] = symmetry
 
         assert len(self.params['Projections']) == 3
-        assert np.linalg.det(self.params['Projections']) > 0
+        assert np.abs(np.linalg.det(self.params['Projections'])) > 0
 
         assert len(self.params['Bins']) == 3
         assert (np.array(self.params['Bins']) > 0).all()

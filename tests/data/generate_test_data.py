@@ -2,27 +2,35 @@ import json
 
 from garnet.reduction.plan import ReductionPlan
 
-corelli = ReductionPlan().generate_plan('CORELLI')
-topaz = ReductionPlan().generate_plan('TOPAZ')
-mandi = ReductionPlan().generate_plan('MANDI')
-snap = ReductionPlan().generate_plan('SNAP')
-demand = ReductionPlan().generate_plan('DEMAND')
-wand2 = ReductionPlan().generate_plan('WAND²')
-
+corelli = ReductionPlan()
+corelli.generate_plan('CORELLI')
 corelli.plan['IPTS'] = 31429
-corelli.plan['Runs'] = 324246
+corelli.plan['Runs'] = '324246'
+corelli.plan['UBFile'] = None
+corelli.plan['DetectorCalibration'] = '/SNS/CORELLI/shared/calibration/2022A/calibration.xml'
+corelli.plan['MaskFile'] = '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/integration.xml'
+corelli.plan['VanadiumFile'] = '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/solid_angle_2p5-8.nxs'
+corelli.plan['FluxFile'] = '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/flux_2p5-8.nxs'
+corelli.plan['Integration']['Cell'] = 'Cubic'
+corelli.plan['Integration']['Centering'] = 'I'
+corelli.plan['Integration']['MinD'] = 0.7
+corelli.plan['Integration']['Radius'] = 0.25
+corelli.plan['Normalization']['Symmetry'] = 'm-3m'
 
-# corelli = {
-#     'Instrument': 'CORELLI',
-#     'IPTS': '31429',
-#     'Runs': '324246',
-#     'UB': None,
-#     'DetectorCalibration': '/SNS/CORELLI/shared/calibration/2022A/calibration.xml',
-#     'TubeCalibration': '/SNS/CORELLI/shared/calibration/tube/calibration_corelli_20200109.nxs.h5',
-#     'MaskFile': '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/integration.xml',
-#     'VanadiumFile': '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/solid_angle_2p5-8.nxs',
-#     'FluxFile': '/SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/flux_2p5-8.nxs',
-# }
+topaz = ReductionPlan()
+topaz.generate_plan('TOPAZ')
+
+mandi = ReductionPlan()
+mandi.generate_plan('MANDI')
+
+snap = ReductionPlan()
+snap.generate_plan('SNAP')
+
+demand = ReductionPlan()
+demand.generate_plan('DEMAND')
+
+wand2 = ReductionPlan()
+wand2.generate_plan('WAND²')
 
 # topaz = {
 #     'Instrument': 'TOPAZ',
@@ -60,4 +68,4 @@ names = [k for k, v in locals().items() if v in plans]
 
 for name, plan in zip(names, plans):
     with open('{}_reduction_plan.json'.format(name), 'w') as f:
-        json.dump(plan, f, indent=4, separators=(', ', ': '))
+        json.dump(plan.plan, f, indent=4)
