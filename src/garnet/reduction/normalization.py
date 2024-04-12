@@ -91,7 +91,6 @@ class Normalization:
             if self.plan['Instrument'] == 'WAND²':
 
                 data.load_data('md', self.plan['IPTS'], runs)
-                print(runs)
 
                 if self.plan['UBFile'] is not None:
 
@@ -177,15 +176,6 @@ class Normalization:
             data.combine_histograms('tmp_data', 'data')
             data.combine_histograms('tmp_norm', 'norm')
 
-            UB_file = file.replace('.nxs','.mat')
-    
-            for ws in ['data', 'norm']:
-                data.add_UBW(ws,
-                             UB_file,
-                             self.params['Projections'])
-
-            os.remove(UB_file)
-
             bkg_data_file = self.get_file(file, 'bkg_data')
             bkg_norm_file = self.get_file(file, 'bkg_norm')
 
@@ -205,12 +195,21 @@ class Normalization:
 
         data_file = self.get_file(output_file, 'data')
         norm_file = self.get_file(output_file, 'norm')
+        result_file = self.get_file(output_file, '')
+
+        data.divide_histograms('result', 'data', 'norm')
+
+        UB_file = file.replace('.nxs','.mat')
+
+        for ws in ['data', 'norm', 'result']:
+
+            data.add_UBW(ws, UB_file, self.params['Projections'])
+
+        os.remove(UB_file)
 
         data.save_histograms(data_file, 'data')
         data.save_histograms(norm_file, 'norm')
-
-        data.divide_histograms('result', 'data', 'norm')
-        data.save_histograms(output_file, 'result')
+        data.save_histograms(result_file, 'result')
 
         if mtd.doesExist('bkg_data') and mtd.doesExist('bkg_norm'):
 

@@ -390,15 +390,16 @@ class BaseDataModel:
 
         """
 
-        CreateSingleValuedWorkspace(OutputWorkspace='ws')
+        CreateSingleValuedWorkspace(OutputWorkspace='ubw')
 
         W = np.column_stack(projections)
 
         W_MATRIX = ','.join(9*['{}']).format(*W.flatten())
 
-        LoadIsawUB(InputWorkspace='ws', Filename=ub_file)
+        LoadIsawUB(InputWorkspace='ubw', Filename=ub_file)
 
         if mtd.doesExist(ws):
+
             AddSampleLog(Workspace=ws,
                          LogName='W_MATRIX',
                          LogText=W_MATRIX,
@@ -407,7 +408,7 @@ class BaseDataModel:
             run = mtd[ws].getExperimentInfo(0).run()
             run.addProperty('W_MATRIX', list(W.flatten()*1.), True)
 
-            CopySample(InputWorkspace='ws',
+            CopySample(InputWorkspace='ubw',
                        OutputWorkspace=ws,
                        CopyName=False,
                        CopyMaterial=False,
@@ -628,11 +629,8 @@ class MonochromaticData(BaseDataModel):
             bkg_data = ws+'_bkg_data' if mtd.doesExist('bkg') else None
             bkg_norm = ws+'_bkg_norm' if mtd.doesExist('bkg') else None
 
-            _data = ws+'_tmp_data'
-            _norm = ws+'_tmp_norm'
-
-            _data = _data if mtd.doesExist(_data) else None
-            _norm = _norm if mtd.doesExist(_norm) else None
+            _data = ws+'_tmp_data' if mtd.doesExist(ws+'_tmp_data') else None
+            _norm = ws+'_tmp_norm' if mtd.doesExist(ws+'_tmp_norm') else None
 
             __data = ws+'_tmp_bkg_data'
             __norm = ws+'_tmp_bkg_norm'
