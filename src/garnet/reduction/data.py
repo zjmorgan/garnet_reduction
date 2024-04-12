@@ -357,7 +357,7 @@ class BaseDataModel:
         LoadMD(Filename=filename,
                OutputWorkspace=ws)
 
-    def save_histograms(self, filename, ws):
+    def save_histograms(self, filename, ws, sample_logs=False):
         """
         Save histograms file.
 
@@ -373,9 +373,9 @@ class BaseDataModel:
         SaveMD(Filename=filename,
                InputWorkspace=ws,
                SaveHistory=False,
-               SaveInstrument=False,
-               SaveSample=False,
-               SaveLogs=False)
+               SaveInstrument=sample_logs,
+               SaveSample=sample_logs,
+               SaveLogs=sample_logs)
 
     def add_UBW(self, ws, ub_file, projections):
         """
@@ -387,6 +387,8 @@ class BaseDataModel:
             Name of histogram to be added.
         filename : str
             Name of UB file with extension .mat.
+        projections : list
+            Axis projections.
 
         """
 

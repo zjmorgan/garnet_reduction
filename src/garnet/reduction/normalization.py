@@ -207,17 +207,17 @@ class Normalization:
 
         os.remove(UB_file)
 
-        data.save_histograms(data_file, 'data')
-        data.save_histograms(norm_file, 'norm')
-        data.save_histograms(result_file, 'result')
+        data.save_histograms(data_file, 'data', sample_logs=True)
+        data.save_histograms(norm_file, 'norm', sample_logs=True)
+        data.save_histograms(result_file, 'result', sample_logs=True)
 
         if mtd.doesExist('bkg_data') and mtd.doesExist('bkg_norm'):
 
             data_file = self.get_file(output_file, 'data')
             norm_file = self.get_file(output_file, 'norm')
 
-            data.save_histograms(data_file, 'bkg_data')
-            data.save_histograms(norm_file, 'bkg_norm')
+            data.save_histograms(data_file, 'bkg_data', sample_logs=True)
+            data.save_histograms(norm_file, 'bkg_norm', sample_logs=True)
 
             bkg_output_file = self.get_file(output_file, 'bkg')
 
@@ -227,4 +227,4 @@ class Normalization:
             data.subtract_histograms('sub_result', 'result', 'bkg_result')
 
             data_file = self.get_file(output_file, 'sub')
-            data.save_histograms(output_file, 'sub_result')
+            data.save_histograms(output_file, 'sub_result', sample_logs=True)
