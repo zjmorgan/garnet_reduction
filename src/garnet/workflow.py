@@ -27,7 +27,7 @@ inst_dict = {'corell': 'CORELLI',
              'wand2': 'WAND²',
              'hb2c': 'WAND²'}
 
-if type(arg) is int:
+if arg.isdigit():
     n_proc = int(arg)
 else:
     instrument = inst_dict[arg.lower()]
