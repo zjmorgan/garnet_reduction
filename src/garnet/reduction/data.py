@@ -22,6 +22,7 @@ from mantid.simpleapi import (Load,
                               CropWorkspaceForMDNorm,
                               ClearUB,
                               LoadIsawUB,
+                              SaveIsawUB,
                               CloneWorkspace,
                               PlusMD,
                               MinusMD,
@@ -92,6 +93,21 @@ class BaseDataModel:
 
         ClearUB(Workspace=ws)
         LoadIsawUB(InputWorkspace=ws, Filename=filename)
+
+    def save_UB(self, filename, ws):
+        """
+        Save UB to file.
+
+        Parameters
+        ----------
+        filename : str
+            Name of UB file with extension .mat.
+        ws : str, optional
+           Name of data.
+
+        """
+
+        SaveIsawUB(InputWorkspace=ws, Filename=filename)
 
     def file_names(self, IPTS, runs):
         """
