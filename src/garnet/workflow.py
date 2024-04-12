@@ -42,6 +42,8 @@ if __name__ == '__main__':
         rp.generate_plan(instrument)
         filename = os.path.abspath(filename)
         if not os.path.exists(filename):
+            rp.plan.pop('OutputName')
+            rp.plan.pop('OutputPath')
             rp.save_plan(filename)
 
     else:

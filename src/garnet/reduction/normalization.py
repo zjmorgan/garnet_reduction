@@ -91,6 +91,7 @@ class Normalization:
             if self.plan['Instrument'] == 'WAND²':
 
                 data.load_data('md', self.plan['IPTS'], runs)
+                print(runs)
 
                 if self.plan['UBFile'] is not None:
 
