@@ -116,7 +116,7 @@ class Normalization:
                                           self.params['Bins'],
                                           symmetry=self.params.get('Symmetry'))
 
-        UB_file = output_file.relpace('.nxs','.mat')
+        UB_file = output_file.replace('.nxs','.mat')
         data.save_UB(UB_file, 'md')
 
         data_file = self.get_file(output_file, 'data')
@@ -176,7 +176,7 @@ class Normalization:
             data.combine_histograms('tmp_data', 'data')
             data.combine_histograms('tmp_norm', 'norm')
 
-            UB_file = file.relpace('.nxs','.mat')
+            UB_file = file.replace('.nxs','.mat')
     
             for ws in ['data', 'norm']:
                 data.add_UBW(ws,
