@@ -92,7 +92,9 @@ class Normalization:
 
                 data.load_data('md', self.plan['IPTS'], runs)
 
-                data.load_clear_UB(self.plan['UBFile'], 'md')
+                if self.plan['UBFile'] is not None:
+
+                    data.load_clear_UB(self.plan['UBFile'], 'md')
 
                 data.normalize_to_hkl('md',
                                       self.params['Projections'],
