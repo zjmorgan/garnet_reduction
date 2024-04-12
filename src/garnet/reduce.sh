@@ -9,8 +9,8 @@ REDUCTION="norm"
 while getopts htni FLAG; do
     case $FLAG in
         h)
-            echo "/SNS/software/scd/reduce.sh -i[n] reduction.json processes"
-            echo "/SNS/software/scd/reduce.sh -t reduction.json instrument"
+            echo "/SNS/software/scd/reduce.sh -i[n] reduction.yaml processes"
+            echo "/SNS/software/scd/reduce.sh -t reduction.yaml instrument"
             exit 1
             ;;
         t)
@@ -28,7 +28,7 @@ done
 shift $((OPTIND-1))
 
 if [[ $# -ne 2 ]]; then
-    echo "Requires input json file and number of processes"
+    echo "Requires input yaml file and number of processes"
     exit 1
 fi
 

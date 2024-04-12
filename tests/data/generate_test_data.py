@@ -1,6 +1,4 @@
-import json
-
-from garnet.reduction.plan import ReductionPlan
+from garnet.reduction.plan import ReductionPlan, save_YAML
 
 corelli = ReductionPlan()
 corelli.generate_plan('CORELLI')
@@ -67,5 +65,4 @@ plans = [corelli, topaz, mandi, snap, demand, wand2]
 names = [k for k, v in locals().items() if v in plans]
 
 for name, plan in zip(names, plans):
-    with open('{}_reduction_plan.json'.format(name), 'w') as f:
-        json.dump(plan.plan, f, indent=4)
+    save_YAML(plan.plan, '{}_reduction_plan.yaml'.format(name))

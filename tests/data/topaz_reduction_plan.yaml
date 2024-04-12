@@ -1,0 +1,23 @@
+Instrument: TOPAZ
+IPTS: 0
+Runs: '1:2'
+UBFile: ''
+VanadiumFile: ''
+FluxFile: ''
+MaskFile: null
+DetectorCalibration: null
+Integration:
+  Cell: Triclinic
+  Centering: P
+  ModVec1: [0, 0, 0]
+  ModVec2: [0, 0, 0]
+  ModVec3: [0, 0, 0]
+  MaxOrder: 0
+  CrossTerms: false
+  MinD: 1.75
+  Radius: 0.2
+Normalization:
+  Symmetry: null
+  Projections: [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+  Extents: [[-10, 10], [-10, 10], [-10, 10]]
+  Bins: [201, 201, 201]

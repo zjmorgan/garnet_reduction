@@ -25,7 +25,7 @@ def test_load_plan():
 
     garnet_plan = ReductionPlan()
 
-    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.json')
+    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.yaml')
 
     garnet_plan.load_plan(reduction_plan)
 
@@ -39,13 +39,13 @@ def test_save_plan():
 
     garnet_plan = ReductionPlan()
 
-    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.json')
+    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.yaml')
 
     garnet_plan.load_plan(reduction_plan)
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
-        tmp_name = 'tmp_plan.json'
+        tmp_name = 'tmp_plan.yaml'
         tmp_plan = os.path.join(tmpdir, tmp_name)
 
         assert garnet_plan.plan['OutputName'] == 'corelli_reduction_plan'
@@ -69,7 +69,7 @@ def test_integration_plan():
 
     garnet_plan = ReductionPlan()
 
-    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.json')
+    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.yaml')
 
     garnet_plan.load_plan(reduction_plan)
 
@@ -95,7 +95,7 @@ def test_normalization_plan():
 
     garnet_plan = ReductionPlan()
 
-    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.json')
+    reduction_plan = os.path.join(filepath, 'data/corelli_reduction_plan.yaml')
 
     garnet_plan.load_plan(reduction_plan)
 

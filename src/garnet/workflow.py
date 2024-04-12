@@ -31,7 +31,7 @@ if type(arg) is int:
     n_proc = int(arg)
 else:
     instrument = inst_dict[arg.lower()]
-    assert filename.endswith('.json')
+    assert filename.endswith('.yaml')
 
 if __name__ == '__main__':
 

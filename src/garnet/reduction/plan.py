@@ -1,7 +1,21 @@
 import os
-import json
+import yaml
 
 from garnet.config.instruments import beamlines
+
+class Dumper(yaml.Dumper):
+    def represent_list(self, data):
+        return self.represent_sequence('tag:yaml.org,2002:seq',
+                                       data,
+                                       flow_style=True)
+
+Dumper.add_representer(list, Dumper.represent_list)
+
+def save_YAML(output, filename):
+    
+    with open(filename, 'w') as f:
+
+        yaml.dump(output, f, Dumper=Dumper, sort_keys=False)
 
 class ReductionPlan:
 
@@ -25,7 +39,7 @@ class ReductionPlan:
         Parameters
         ----------
         filename : str
-            JSON file of reduction plan.
+            yaml file of reduction plan.
 
         """
 
@@ -42,13 +56,13 @@ class ReductionPlan:
         Parameters
         ----------
         filename : str
-            JSON file of reduction plan.
+            yaml file of reduction plan.
 
         """
 
         with open(filename, 'r') as f:
 
-            self.plan = json.load(f)
+            self.plan = yaml.safe_load(f)
 
         self.validate_plan()
 
@@ -64,7 +78,7 @@ class ReductionPlan:
         Parameters
         ----------
         filename : str
-            JSON file of reduction plan.
+            yaml file of reduction plan.
 
         """
 
@@ -75,9 +89,7 @@ class ReductionPlan:
             if type(runs) is list:
                 self.plan['Runs'] = self.runs_list_to_string(runs)
 
-            with open(filename, 'w') as f:
-
-                json.dump(self.plan, f, indent=4)
+            save_YAML(self.plan, filename)
 
     def runs_string_to_list(self, runs_str):
         """
