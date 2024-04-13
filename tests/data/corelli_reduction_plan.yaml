@@ -1,6 +1,6 @@
 Instrument: CORELLI
 IPTS: 31429
-Runs: '324246'
+Runs: 324246
 UBFile: null
 VanadiumFile: /SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/solid_angle_2p5-8.nxs
 FluxFile: /SNS/CORELLI/shared/Vanadium/2022B_0725_CCR_5x7/flux_2p5-8.nxs

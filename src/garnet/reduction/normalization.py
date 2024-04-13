@@ -60,6 +60,8 @@ class Normalization:
 
         data = DataModel(beamlines[self.plan['Instrument']])
 
+        data.update_raw_path(self.plan)
+
         data.load_generate_normalization(self.plan['VanadiumFile'],
                                          self.plan.get('FluxFile'))
 
@@ -205,7 +207,11 @@ class Normalization:
 
             data.add_UBW(ws, UB_file, self.params['Projections'])
 
-        os.remove(UB_file)
+        for ind, file in enumerate(files):
+
+            UB_file = file.replace('.nxs','.mat')
+
+            os.remove(UB_file)
 
         data.save_histograms(data_file, 'data', sample_logs=True)
         data.save_histograms(norm_file, 'norm', sample_logs=True)

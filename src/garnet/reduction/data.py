@@ -8,9 +8,14 @@ from mantid.simpleapi import (Load,
                               LoadIsawDetCal,
                               ApplyCalibration,
                               PreprocessDetectorsToMD,
+                              LoadMask,
+                              MaskDetectors,
                               SetGoniometer,
                               LoadWANDSCD,
                               HB3AAdjustSampleNorm,
+                              CorelliCrossCorrelate,
+                              LoadEmptyInstrument,
+                              CopyInstrumentParameters,
                               ConvertToMD,
                               ConvertHFIRSCDtoMDE,
                               ReplicateMD,
@@ -77,6 +82,40 @@ class BaseDataModel:
 
         self.k_min = 2*np.pi/np.max(self.wavelength_band)
         self.k_max = 2*np.pi/np.min(self.wavelength_band)
+
+        if not mtd.doesExist(self.instrument):
+
+            self.ref_inst = self.instrument_config['InstrumentName']
+            LoadEmptyInstrument(InstrumentName=self.ref_inst,
+                                OutputWorkspace=self.instrument)
+
+    def update_raw_path(self, plan):
+        """
+        Set additional paramters for data file.
+
+        Parameters
+        ----------
+        plan : dict
+            Reduction plan.
+
+        """
+
+        instrument = plan['Instrument']
+
+        self.elastic = None
+        self.time_offset = None
+
+        raw_path = self.raw_file_path
+
+        if instrument == 'DEMAND':
+            exp = plan['Experiment']
+            self.raw_file_path = raw_path.format(exp,'{:04}')
+        elif instrument == 'CORELLI':
+            self.elastic = plan.get('Elastic')
+            self.time_offset = plan.get('TimeOffset')
+            if self.elastic == True and self.time_offset is None:
+                raw_path = raw_path.replace('nexus/','shared/autoreduce')
+                self.raw_file_path = raw_path.replace('.nxs','_elastic.nxs')
 
     def load_clear_UB(self, filename, ws):
         """
@@ -695,6 +734,13 @@ class LaueData(BaseDataModel):
         Load(Filename=filenames,
              OutputWorkspace=event_name)
 
+        if self.elastic and self.time_offset is not None:
+            CopyInstrumentParameters(InputWorkspace=self.ref_inst,
+                                     OutputWorkspace=event_name)
+            CorelliCrossCorrelate(InputWorkspace=event_name,
+                                  OutputWorkspace=event_name,
+                                  TimingOffset=self.time_offset)
+            
         if not mtd.doesExist('detectors'):
 
             PreprocessDetectorsToMD(InputWorkspace=event_name,
@@ -754,6 +800,33 @@ class LaueData(BaseDataModel):
 
                 LoadIsawDetCal(InputWorkspace=event_name,
                                Filename=detector_calibration)
+
+    def apply_mask(self, event_name, instrument, detector_mask):
+        """
+        Apply detector mask.
+
+        Parameters
+        ----------
+        event_name : str
+            Name of raw event_name data.
+        instrument : str
+            Name of instrument geometry.
+        detector_mask : str
+            Detector mask as .xml.
+
+        """
+            
+        if detector_mask is not None and not mtd.doesExist('mask'):
+
+            LoadMask(Instrument=instrument, 
+                     InputFile=detector_mask,
+                     RefWorkspace=event_name,
+                     OutputWorkspace='mask')
+
+        if mtd.doesExist('mask'):
+
+            MaskDetectors(Workspace=event_name,
+                          MaskedWorkspace='mask')
 
     def convert_to_Q_sample(self, event_name, md_name, lorentz_corr=False):
         """

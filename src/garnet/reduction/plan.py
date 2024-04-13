@@ -46,8 +46,8 @@ class ReductionPlan:
         path = os.path.dirname(os.path.abspath(filename))
         name = os.path.splitext(os.path.basename(filename))[0]
 
-        self.plan['OutputPath'] = path
-        self.plan['OutputName'] = name
+        self.plan['# OutputPath'] = path
+        self.plan['# OutputName'] = name
 
     def load_plan(self, filename):
         """
@@ -180,7 +180,11 @@ class ReductionPlan:
         if instrument == 'DEMAND':
             plan['Experiment'] = 1
 
-        plan['UBFile'] = ''
+        if params['Facility'] == 'HFIR':
+            plan['UBFile'] = None
+        else:
+            plan['UBFile'] = ''
+
         plan['VanadiumFile'] = ''
 
         if params['Facility'] == 'SNS':
@@ -192,6 +196,7 @@ class ReductionPlan:
             plan['TubeCalibration'] = '/SNS/CORELLI/shared/calibration/tube'\
                                     + '/calibration_corelli_20200109.nxs.h5'
             plan['Elastic'] = False
+            plan['TimeOffset'] = None
 
         self.plan = plan
 
@@ -245,6 +250,7 @@ class ReductionPlan:
         -------
         params : dict
             Integration plan.
+
         """
 
         params = {}

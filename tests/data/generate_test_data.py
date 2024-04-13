@@ -13,7 +13,7 @@ corelli.plan['Integration']['Cell'] = 'Cubic'
 corelli.plan['Integration']['Centering'] = 'I'
 corelli.plan['Integration']['MinD'] = 0.7
 corelli.plan['Integration']['Radius'] = 0.25
-corelli.plan['Normalization']['Symmetry'] = 'm-3m'
+corelli.plan['Normalization']['Symmetry'] = None
 
 topaz = ReductionPlan()
 topaz.generate_plan('TOPAZ')
