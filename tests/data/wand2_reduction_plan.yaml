@@ -1,20 +1,21 @@
 Instrument: "WAND\xB2"
-IPTS: 0
-Runs: '1:2'
-UBFile: ''
-VanadiumFile: ''
+IPTS: 7776
+Runs: 26640:27944
+UBFile: /HFIR/HB2C/shared/benchmark/NaCl.mat
+VanadiumFile: /HFIR/HB2C/IPTS-7776/nexus/HB2C_27969.nxs.h5
+BackgroundFile: /HFIR/HB2C/IPTS-7776/nexus/HB2C_27968.nxs.h5
 Integration:
-  Cell: Triclinic
-  Centering: P
+  Cell: Cubic
+  Centering: F
   ModVec1: [0, 0, 0]
   ModVec2: [0, 0, 0]
   ModVec3: [0, 0, 0]
   MaxOrder: 0
   CrossTerms: false
-  MinD: 0.743
-  Radius: 0.2
+  MinD: 0.7
+  Radius: 0.25
 Normalization:
-  Symmetry: null
+  Symmetry: m-3m
   Projections: [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
   Extents: [[-10, 10], [-10, 10], [-10, 10]]
   Bins: [201, 201, 201]

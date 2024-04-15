@@ -42,8 +42,8 @@ if __name__ == '__main__':
         rp.generate_plan(instrument)
         filename = os.path.abspath(filename)
         if not os.path.exists(filename):
-            rp.plan.pop('# OutputName', None)
-            rp.plan.pop('# OutputPath', None)
+            rp.plan.pop('OutputName', None)
+            rp.plan.pop('OutputPath', None)
             rp.save_plan(filename)
 
     else:
@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
         pt = ParallelTasks(func, comb)
 
-        max_proc = os.cpu_count()
+        max_proc = min(os.cpu_count(), len(rp.plan['Runs']))
 
         if n_proc > max_proc:
             n_proc = max_proc

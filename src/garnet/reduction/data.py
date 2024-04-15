@@ -14,6 +14,7 @@ from mantid.simpleapi import (Load,
                               LoadWANDSCD,
                               HB3AAdjustSampleNorm,
                               CorelliCrossCorrelate,
+                              NormaliseByCurrent,
                               LoadEmptyInstrument,
                               CopyInstrumentParameters,
                               ConvertToMD,
@@ -21,6 +22,7 @@ from mantid.simpleapi import (Load,
                               ReplicateMD,
                               BinMD,
                               DivideMD,
+                              MultiplyMD,
                               MDNorm,
                               ConvertWANDSCDtoQ,
                               ConvertUnits,
@@ -36,6 +38,7 @@ from mantid.simpleapi import (Load,
                               CreateSingleValuedWorkspace,
                               AddSampleLog,
                               CopySample,
+                              DeleteWorkspace,
                               mtd)
 
 def DataModel(instrument_config):
@@ -91,7 +94,7 @@ class BaseDataModel:
 
     def update_raw_path(self, plan):
         """
-        Set additional paramters for data file.
+        Set additional parameters for data file.
 
         Parameters
         ----------
@@ -105,17 +108,20 @@ class BaseDataModel:
         self.elastic = None
         self.time_offset = None
 
-        raw_path = self.raw_file_path
+        raw_path = os.path.dirname(self.raw_file_path)
+        raw_file = os.path.basename(self.raw_file_path)
 
         if instrument == 'DEMAND':
             exp = plan['Experiment']
-            self.raw_file_path = raw_path.format(exp,'{:04}')
+            raw_file = raw_file.format(exp,'{:04}')
         elif instrument == 'CORELLI':
             self.elastic = plan.get('Elastic')
             self.time_offset = plan.get('TimeOffset')
             if self.elastic == True and self.time_offset is None:
-                raw_path = raw_path.replace('nexus/','shared/autoreduce')
-                self.raw_file_path = raw_path.replace('.nxs','_elastic.nxs')
+                raw_path = raw_path.replace('nexus/', 'shared/autoreduce')
+                raw_file = raw_file.replace('.nxs', '_elastic.nxs')
+
+        self.raw_file_path = os.path.join(raw_path, raw_file)
 
     def load_clear_UB(self, filename, ws):
         """
@@ -491,8 +497,9 @@ class MonochromaticData(BaseDataModel):
             si = ei.spectrumInfo()
             n_det = ei.getInstrument().getNumberDetectors()
             self.theta_max = 0.5*np.max([si.twoTheta(i) for i in range(n_det)])
-            self.scale = ei.run().getProperty('time').value
-
+            run = ei.run()
+            self.scale = run.getProperty('time').value
+            
         else:
             LoadWANDSCD(Filename=filenames,
                         Grouping='None',
@@ -500,6 +507,11 @@ class MonochromaticData(BaseDataModel):
             run = mtd[histo_name].getExperimentInfo(0).run()
             self.theta_max = 0.5*np.max(run.getProperty('TwoTheta').value)
             self.scale = run.getProperty('duration').value
+
+        if run.hasProperty('wavelength'):
+            wl = float(run.getProperty('wavelength').value)
+            self.wavelength = wl
+            self.wavelength_band = [0.98*wl, 1.02*wl]
 
         self.Q_max = 4*np.pi/self.wavelength*np.sin(0.5*self.theta_max)
 
@@ -582,6 +594,52 @@ class MonochromaticData(BaseDataModel):
                                         MaxValues=Q_max_vals,
                                         OutputWorkspace='norm')
 
+    def load_background(self, filename, histo_name=None):
+        """
+        Load a background file and scale to data.
+
+        Parameters
+        ----------
+        filename : str
+            Background file.
+        histo_name : str
+            Name of raw histogram data.
+
+        """
+
+        if not mtd.doesExist('bkg') and filename is not None:
+
+            if self.instrument == 'DEMAND':
+                HB3AAdjustSampleNorm(Filename=filename,
+                                     OutputType='Detector',
+                                     OutputWorkspace='bkg')
+                ei = mtd['bkg'].getExperimentInfo(0)
+                scale = ei.run().getProperty('time').value
+
+            else:
+                LoadWANDSCD(Filename=filename,
+                            Grouping='None',
+                            OutputWorkspace='bkg')
+                run = mtd['bkg'].getExperimentInfo(0).run()
+                scale = run.getProperty('duration').value
+
+            if histo_name is not None:
+
+                if mtd.doesExist(histo_name):
+
+                    ws_name = '{}_bkg'.format(histo_name)
+
+                    if not mtd.doesExist(ws_name):
+
+                        ReplicateMD(ShapeWorkspace=histo_name,
+                                    DataWorkspace='bkg',
+                                    OutputWorkspace=ws_name)
+
+                        self.set_goniometer(ws_name)
+
+                        signal = mtd[ws_name].getSignalArray().copy()
+                        mtd[ws_name].setSignalArray(signal*self.scale/scale)
+
     def normalize_to_Q_sample(self, md, extents, bins):
         """
         Histogram data into normalized Q-sample.
@@ -645,7 +703,7 @@ class MonochromaticData(BaseDataModel):
         symmetry : str, optional
             Laue point group. The default is None.
 
-        """        
+        """
 
         if mtd.doesExist(ws) and mtd.doesExist('van'):
 
@@ -665,22 +723,16 @@ class MonochromaticData(BaseDataModel):
                                                                    Q2_max, nQ2)
 
 
-            bkg_ws = 'bkg' if mtd.doesExist('bkg') else None
+            bkg_ws = ws+'_bkg' if mtd.doesExist(ws+'_bkg') else None
 
-            bkg_data = ws+'_bkg_data' if mtd.doesExist('bkg') else None
-            bkg_norm = ws+'_bkg_norm' if mtd.doesExist('bkg') else None
+            bkg_data = ws+'_bkg_data' if mtd.doesExist(ws+'_bkg') else None
+            bkg_norm = ws+'_bkg_norm' if mtd.doesExist(ws+'_bkg') else None
 
-            _data = ws+'_tmp_data' if mtd.doesExist(ws+'_tmp_data') else None
-            _norm = ws+'_tmp_norm' if mtd.doesExist(ws+'_tmp_norm') else None
+            _data = ws+'_data' if mtd.doesExist(ws+'_data') else None
+            _norm = ws+'_norm' if mtd.doesExist(ws+'_norm') else None
 
-            __data = ws+'_tmp_bkg_data'
-            __norm = ws+'_tmp_bkg_norm'
-
-            if not mtd.doesExist(__data):
-                __data = None
-
-            if not mtd.doesExist(__norm):
-                __norm = None
+            __data = ws+'_bkg_data' if mtd.doesExist(ws+'_bkg_data') else None
+            __norm = ws+'_bkg_norm' if mtd.doesExist(ws+'_bkg_norm') else None
 
             ConvertWANDSCDtoQ(InputWorkspace=ws,
                               NormalisationWorkspace='van',
@@ -693,6 +745,7 @@ class MonochromaticData(BaseDataModel):
                               OutputBackgroundNormalizationWorkspace=bkg_norm,
                               NormaliseBy='Time',
                               Frame='HKL',
+                              Wavelength=self.wavelength,
                               SymmetryOperations=symmetry,
                               KeepTemporaryWorkspaces=True,
                               TemporaryDataWorkspace=_data,
@@ -740,7 +793,7 @@ class LaueData(BaseDataModel):
             CorelliCrossCorrelate(InputWorkspace=event_name,
                                   OutputWorkspace=event_name,
                                   TimingOffset=self.time_offset)
-            
+
         if not mtd.doesExist('detectors'):
 
             PreprocessDetectorsToMD(InputWorkspace=event_name,
@@ -801,7 +854,7 @@ class LaueData(BaseDataModel):
                 LoadIsawDetCal(InputWorkspace=event_name,
                                Filename=detector_calibration)
 
-    def apply_mask(self, event_name, instrument, detector_mask):
+    def apply_mask(self, event_name, detector_mask):
         """
         Apply detector mask.
 
@@ -809,16 +862,14 @@ class LaueData(BaseDataModel):
         ----------
         event_name : str
             Name of raw event_name data.
-        instrument : str
-            Name of instrument geometry.
         detector_mask : str
             Detector mask as .xml.
 
         """
-            
+
         if detector_mask is not None and not mtd.doesExist('mask'):
 
-            LoadMask(Instrument=instrument, 
+            LoadMask(Instrument=self.ref_inst,
                      InputFile=detector_mask,
                      RefWorkspace=event_name,
                      OutputWorkspace='mask')
@@ -892,7 +943,7 @@ class LaueData(BaseDataModel):
         Convert units to momentum and crop to wavelength band.
 
         event_name : str
-            Name of raw event_name data.
+            Name of raw event data.
 
         """
 
@@ -906,6 +957,59 @@ class LaueData(BaseDataModel):
                                    XMin=self.k_min,
                                    XMax=self.k_max,
                                    OutputWorkspace=event_name)
+
+    def load_background(self, filename, event_name):
+        """
+        Load a background file and scale to data.
+
+        Parameters
+        ----------
+        filename : str
+            Background file.
+        event_name : str
+            Name of raw event data.
+
+        """
+
+        if not mtd.doesExist('bkg_mde') and filename is not None:
+
+            Load(Filename=filename,
+                 OutputWorkspace='bkg')
+
+            if not mtd['bkg'].run().hasProperty('NormalizationFactor'):
+
+                NormaliseByCurrent(InputWorkspace='bkg',
+                                   OutputWorkspace='bkg')
+
+            Q_min_vals, Q_max_vals = self.get_min_max_values()
+
+            ConvertToMD(InputWorkspace='bkg',
+                        QDimensions='Q3D',
+                        dEAnalysisMode='Elastic',
+                        Q3DFrames='Q_lab',
+                        LorentzCorrection=False,
+                        MinValues=Q_min_vals,
+                        MaxValues=Q_max_vals,
+                        OutputWorkspace='bkg_mde')
+
+            DeleteWorkspace(Workspace='bkg')
+
+        if mtd.doesExist('bkg_mde'):
+
+            pc = mtd[event_name].run().getProperty('gd_prtn_chrg').value
+
+            CreateSingleValuedWorkspace(DataValue=pc,
+                                        OutputWorkspace='pc_scale')
+
+            MultiplyMD(LHSWorkspace='bkg_mde',
+                       RHSWorkspace='pc_scale',
+                       OutputWorkspace='bkg_md')
+
+            AddSampleLog(Workspace='bkg_md',
+                         LogName='gd_prtn_chrg',
+                         LogText=str(pc),
+                         LogType='Number',
+                         NumberType='Double')
 
     def normalize_to_Q_sample(self, md, extents, bins):
         """
@@ -990,25 +1094,16 @@ class LaueData(BaseDataModel):
                                                                    Q2_max, nQ2)
 
 
-            bkg_ws = 'bkg' if mtd.doesExist('bkg') else None
+            bkg_ws = 'bkg_md' if mtd.doesExist('bkg_md') else None
 
-            bkg_data = md+'_bkg_data' if mtd.doesExist('bkg') else None
-            bkg_norm = md+'_bkg_norm' if mtd.doesExist('bkg') else None
+            bkg_data = md+'_bkg_data' if mtd.doesExist('bkg_md') else None
+            bkg_norm = md+'_bkg_norm' if mtd.doesExist('bkg_md') else None
 
-            _data = md+'_tmp_data'
-            _norm = md+'_tmp_norm'
+            _data = md+'_data' if mtd.doesExist(md+'_data') else None
+            _norm = md+'_norm' if mtd.doesExist(md+'_norm') else None
 
-            _data = _data if mtd.doesExist(_data) else None
-            _norm = _norm if mtd.doesExist(_norm) else None
-
-            __data = md+'_tmp_bkg_data'
-            __norm = md+'_tmp_bkg_norm'
-
-            if not mtd.doesExist(__data):
-                __data = None
-
-            if not mtd.doesExist(__norm):
-                __norm = None
+            __data = md+'_bkg_data' if mtd.doesExist(md+'_bkg_data') else None
+            __norm = md+'_bkg_norm' if mtd.doesExist(md+'_bkg_norm') else None
 
             MDNorm(InputWorkspace='md',
                    SolidAngleWorkspace='sa',

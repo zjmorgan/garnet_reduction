@@ -46,8 +46,8 @@ class ReductionPlan:
         path = os.path.dirname(os.path.abspath(filename))
         name = os.path.splitext(os.path.basename(filename))[0]
 
-        self.plan['# OutputPath'] = path
-        self.plan['# OutputName'] = name
+        self.plan['OutputPath'] = path
+        self.plan['OutputName'] = name
 
     def load_plan(self, filename):
         """
@@ -186,6 +186,7 @@ class ReductionPlan:
             plan['UBFile'] = ''
 
         plan['VanadiumFile'] = ''
+        plan['BackgroundFile'] = None
 
         if params['Facility'] == 'SNS':
             plan['FluxFile'] = ''

@@ -77,11 +77,15 @@ class Normalization:
                                        self.plan.get('DetectorCalibration'),
                                        self.plan.get('TubeCalibration'))
 
+                data.apply_mask('data', self.plan.get('MaskFile'))
+
                 data.crop_for_normalization('data')
 
                 data.load_clear_UB(self.plan['UBFile'], 'data')
 
                 data.convert_to_Q_sample('data', 'md', lorentz_corr=False)
+
+                data.load_background(self.plan.get('BackgroundFile'), 'data')
 
                 data.normalize_to_hkl('md',
                                       self.params['Projections'],
@@ -97,6 +101,8 @@ class Normalization:
                 if self.plan['UBFile'] is not None:
 
                     data.load_clear_UB(self.plan['UBFile'], 'md')
+    
+                data.load_background(self.plan.get('BackgroundFile'), 'md')
 
                 data.normalize_to_hkl('md',
                                       self.params['Projections'],
@@ -110,7 +116,11 @@ class Normalization:
 
                     data.load_data('md', self.plan['IPTS'], run)
 
-                    data.load_clear_UB(self.plan['UBFile'], 'md')
+                    if self.plan['UBFile'] is not None:
+    
+                        data.load_clear_UB(self.plan['UBFile'], 'md')
+
+                    data.load_background(self.plan.get('BackgroundFile'),'md')
 
                     data.normalize_to_hkl('md',
                                           self.params['Projections'],
@@ -129,11 +139,13 @@ class Normalization:
 
         if mtd.doesExist('md_bkg_data') and mtd.doesExist('md_bkg_norm'):
 
-            data_file = self.get_file(output_file, 'data')
-            norm_file = self.get_file(output_file, 'norm')
+            data_file = self.get_file(output_file, 'bkg_data')
+            norm_file = self.get_file(output_file, 'bkg_norm')
 
             data.save_histograms(data_file, 'md_bkg_data')
             data.save_histograms(norm_file, 'md_bkg_norm')
+
+        mtd.clear()
 
         return output_file
 
@@ -219,8 +231,8 @@ class Normalization:
 
         if mtd.doesExist('bkg_data') and mtd.doesExist('bkg_norm'):
 
-            data_file = self.get_file(output_file, 'data')
-            norm_file = self.get_file(output_file, 'norm')
+            data_file = self.get_file(output_file, 'bkg_data')
+            norm_file = self.get_file(output_file, 'bkg_norm')
 
             data.save_histograms(data_file, 'bkg_data', sample_logs=True)
             data.save_histograms(norm_file, 'bkg_norm', sample_logs=True)
@@ -230,7 +242,7 @@ class Normalization:
             data.divide_histograms('bkg_result', 'bkg_data', 'bkg_norm')
             data.save_histograms(bkg_output_file, 'bkg_result')
 
-            data.subtract_histograms('sub_result', 'result', 'bkg_result')
+            data.subtract_histograms('sub', 'result', 'bkg_result')
 
-            data_file = self.get_file(output_file, 'sub')
-            data.save_histograms(output_file, 'sub_result', sample_logs=True)
+            sub_output_file = self.get_file(output_file, 'sub_bkg')
+            data.save_histograms(sub_output_file, 'sub', sample_logs=True)
