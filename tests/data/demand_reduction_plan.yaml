@@ -18,5 +18,5 @@ Integration:
 Normalization:
   Symmetry: mmm
   Projections: [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-  Extents: [[-10, 10], [-10, 10], [-10, 10]]
-  Bins: [201, 201, 201]
+  Extents: [[-5, 5], [-9, 9], [-5, 5]]
+  Bins: [201, 361, 201]

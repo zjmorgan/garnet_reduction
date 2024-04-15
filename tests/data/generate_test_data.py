@@ -75,6 +75,8 @@ demand.plan['Integration']['Centering'] = 'P'
 demand.plan['Integration']['MinD'] = 0.7
 demand.plan['Integration']['Radius'] = 0.25
 demand.plan['Normalization']['Symmetry'] = 'mmm'
+demand.plan['Normalization']['Extents'] = [[-5, 5], [-9, 9], [-5, 5]]
+demand.plan['Normalization']['Bins'] = [201, 361, 201]
 
 wand2 = ReductionPlan()
 wand2.generate_plan('WAND²')
@@ -88,6 +90,9 @@ wand2.plan['Integration']['Centering'] = 'F'
 wand2.plan['Integration']['MinD'] = 0.7
 wand2.plan['Integration']['Radius'] = 0.25
 wand2.plan['Normalization']['Symmetry'] = 'm-3m'
+wand2.plan['Normalization']['Extents'] = [[-7, 7], [-7, 7], [-7, 7]]
+wand2.plan['Normalization']['Bins'] = [281, 281, 281]
+
 
 plans = [corelli, topaz, mandi, snap, demand, wand2]
 names = [k for k, v in locals().items() if v in plans]
