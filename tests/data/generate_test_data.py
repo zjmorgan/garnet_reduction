@@ -18,19 +18,19 @@ corelli.plan['Normalization']['Symmetry'] = 'm-3m'
 
 topaz = ReductionPlan()
 topaz.generate_plan('TOPAZ')
-topaz.plan['IPTS'] = 8776
-topaz.plan['Runs'] = '46917'
-topaz.plan['UBFile'] = None
+topaz.plan['IPTS'] = 31189
+topaz.plan['Runs'] = '46759:46769'
+topaz.plan['UBFile'] = '/SNS/TOPAZ/IPTS-31189/shared/scolecite/find_peaks_46759-46769/SC_Monoclinic_C.mat'
 topaz.plan['DetectorCalibration'] = '/SNS/TOPAZ/shared/calibration/2022C/TOPAZ_2022C_YAG.DetCal'
 topaz.plan['MaskFile'] = '/SNS/TOPAZ/shared/Vanadium/2022C_1202_AG/mask.xml'
 topaz.plan['VanadiumFile'] = '/SNS/TOPAZ/shared/Vanadium/2022C_1202_AG/solid_angle_1p8-18.nxs'
-topaz.plan['FluxFile'] = '/SNS/TOPAZ/shared/Vanadium/2022C_1202_AG/solid_angle_1p8-18.nxs'
+topaz.plan['FluxFile'] = '/SNS/TOPAZ/shared/Vanadium/2022C_1202_AG/flux_1p8-18.nxs'
 topaz.plan['BackgroundFile'] = '/SNS/TOPAZ/shared/Background/2022C_1202_AG/background_1p8-18.nxs'
-topaz.plan['Integration']['Cell'] = 'Cubic'
-topaz.plan['Integration']['Centering'] = 'I'
+topaz.plan['Integration']['Cell'] = 'Monoclinic'
+topaz.plan['Integration']['Centering'] = 'C'
 topaz.plan['Integration']['MinD'] = 0.6
 topaz.plan['Integration']['Radius'] = 0.25
-topaz.plan['Normalization']['Symmetry'] = 'm-3m'
+topaz.plan['Normalization']['Symmetry'] = '2/m'
 
 mandi = ReductionPlan()
 mandi.generate_plan('MANDI')
@@ -92,7 +92,6 @@ wand2.plan['Integration']['Radius'] = 0.25
 wand2.plan['Normalization']['Symmetry'] = 'm-3m'
 wand2.plan['Normalization']['Extents'] = [[-7, 7], [-7, 7], [-7, 7]]
 wand2.plan['Normalization']['Bins'] = [281, 281, 281]
-
 
 plans = [corelli, topaz, mandi, snap, demand, wand2]
 names = [k for k, v in locals().items() if v in plans]

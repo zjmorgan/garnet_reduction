@@ -162,7 +162,7 @@ class Normalization:
 
         name = '' if symmetry is None else '_'+symmetry.replace(' ', '')
 
-        return file.replace('.nxs', name+'.nxs')
+        return file.replace('.nxs', name.replace('/', '_')+'.nxs')
 
     @staticmethod
     def combine_parallel(plan, files):

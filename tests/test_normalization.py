@@ -4,9 +4,35 @@ import shutil
 import subprocess
 
 from garnet.reduction.plan import ReductionPlan
+from garnet.reduction.normalization import Normalization
 from garnet.config.instruments import beamlines
 
 benchmark = 'shared/benchmark/norm'
+
+def test_get_file():
+
+    file = '/tmp/test.nxs'    
+
+    rp = ReductionPlan()
+    rp.generate_plan('TOPAZ')
+
+    data = Normalization(rp.plan).get_file(file, ws='')
+
+    assert data == file
+
+    data = Normalization(rp.plan).get_file(file, ws='data')
+
+    assert data == '/tmp/test_data.nxs' 
+    
+    rp.plan['Normalization']['Symmetry'] = '2/m'
+
+    data = Normalization(rp.plan).get_file(file, ws='')
+
+    assert data == '/tmp/test_2_m.nxs' 
+
+    data = Normalization(rp.plan).get_file(file, ws='data')
+
+    assert data == '/tmp/test_2_m_data.nxs'
 
 def test_corelli():
 
@@ -23,7 +49,32 @@ def test_corelli():
         rp.load_plan(reduction_plan)
         rp.save_plan(os.path.join(tmpdir, config_file))
 
+        instrument_config = beamlines[rp.plan['Instrument']]
+        facility = instrument_config['Facility']
+        name = instrument_config['Name']
+        baseline_path = os.path.join('/', facility, name, benchmark)
+
         subprocess.run(command)
+
+        if os.path.exists(baseline_path):
+            shutil.rmtree(baseline_path)
+
+        shutil.copytree(tmpdir, baseline_path)
+
+def test_topaz():
+
+    config_file = 'topaz_reduction_plan.yaml'
+    reduction_plan = os.path.abspath(os.path.join('./tests/data', config_file))
+    script = os.path.abspath('./src/garnet/workflow.py')
+    command = ['python', script, config_file, 'norm', '6']
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+
+        os.chdir(tmpdir)
+
+        rp = ReductionPlan()
+        rp.load_plan(reduction_plan)
+        rp.save_plan(os.path.join(tmpdir, config_file))
 
         instrument_config = beamlines[rp.plan['Instrument']]
         facility = instrument_config['Facility']
@@ -51,8 +102,6 @@ def test_demand():
         rp = ReductionPlan()
         rp.load_plan(reduction_plan)
         rp.save_plan(os.path.join(tmpdir, config_file))
-
-        subprocess.run(command)
 
         instrument_config = beamlines[rp.plan['Instrument']]
         facility = instrument_config['Facility']
