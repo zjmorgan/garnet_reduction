@@ -52,6 +52,8 @@ class BaseDataModel:
 
     def __init__(self, instrument_config):
 
+        self.elastic = None
+
         self.instrument_config = instrument_config
         self.instrument = self.instrument_config['FancyName']
 
@@ -787,7 +789,7 @@ class LaueData(BaseDataModel):
         Load(Filename=filenames,
              OutputWorkspace=event_name)
 
-        if self.elastic and self.time_offset is not None:
+        if self.elastic == True and self.time_offset is not None:
             CopyInstrumentParameters(InputWorkspace=self.ref_inst,
                                      OutputWorkspace=event_name)
             CorelliCrossCorrelate(InputWorkspace=event_name,

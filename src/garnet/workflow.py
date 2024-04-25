@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 
 directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(directory)
@@ -53,9 +54,20 @@ if __name__ == '__main__':
         if reduction == 'int':
             func = Integration.integrate_parallel
             comb = Integration.combine_parallel
+            path = 'integration'
         elif reduction == 'norm':
             func = Normalization.normalize_parallel
             comb = Normalization.combine_parallel
+            path = 'normalization'
+
+        output = os.path.join(rp.plan['OutputPath'], path)
+        if not os.path.exists(output):
+            os.mkdir(output)
+
+        output = os.path.join(rp.plan['OutputPath'], path, 'plots')
+        if os.path.exists(output):
+            shutil.rmtree(output)
+        os.mkdir(output)
 
         pt = ParallelTasks(func, comb)
 

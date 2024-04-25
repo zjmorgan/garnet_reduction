@@ -620,6 +620,32 @@ class PeakModel:
         mtd[self.peaks].getPeak(no).setIntensity(intens)
         mtd[self.peaks].getPeak(no).setSigmaIntensity(sig)
 
+    def get_peak_name(self, no):
+        """
+        Name of peak
+
+        Parameters
+        ----------
+        no : int
+            Peak index number.
+
+        Returns
+        -------
+        name : str
+            Readable name of peak.
+
+        """
+    
+        peak = mtd[self.peaks].getPeak(no)
+
+        run = peak.getRunNumber()
+        hkl = peak.getIntHKL()
+        mnp = peak.getIntMNP()
+        d = peak.getDSpacing()
+
+        template = 'run#{}_d={:.4f}_({},{},{})_({},{},{})'
+        return template.format(run,d,*hkl,*mnp)
+
     def get_peak_shape(self, no):
         """
         Obtain the peak shape parameters.

@@ -15,6 +15,7 @@ from garnet.reduction.data import DataModel
 from garnet.reduction.peaks import PeaksModel, PeakModel, centering_reflection
 from garnet.reduction.ub import UBModel, Optimization, lattice_group
 from garnet.config.instruments import beamlines
+from garnet.plots.peaks import PeakPlot
 
 class Integration:
 
@@ -74,6 +75,10 @@ class Integration:
         lamda_min, lamda_max = data.wavelength_band
 
         runs = self.plan['Runs']
+
+        plot_path = os.path.join(self.plan['OutputPath'],
+                                 'integration',
+                                 'plots')
 
         if data.laue:
 
@@ -162,6 +167,14 @@ class Integration:
                                                       *params)
 
                     peak.set_peak_intensity(i, intens, sig)
+
+                    plot = PeakPlot('md_data_data', 'md_data_norm')
+
+                    plot.add_ellipsoid(*params)
+
+                    peak_name = peak.get_peak_name(i)
+
+                    plot.save_plot(os.path.join(plot_path, peak_name+'.png'))
 
                 peaks.combine_peaks('peaks', 'combine')
 
@@ -254,6 +267,14 @@ class Integration:
 
                 peak.set_peak_intensity(i, intens, sig)
 
+                plot = PeakPlot('md_data_data', 'md_data_norm')
+
+                plot.add_ellipsoid(*params)
+
+                peak_name = peak.get_peak_name(i)
+
+                plot.save_plot(os.path.join(plot_path, peak_name+'.png'))
+
         peaks.remove_weak_peaks('combine')
 
         peaks.save_peaks(output_file, 'combine')
@@ -279,7 +300,7 @@ class Integration:
 
         dQ0, dQ1, dQ2 = dQ
 
-        bins = [41, 41, 41]
+        bins = [41, 42, 43]
         extents = [[c0-dQ0, c0+dQ0],
                    [c1-dQ1, c1+dQ1],
                    [c2-dQ2, c2+dQ2]]
