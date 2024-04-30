@@ -11,14 +11,12 @@ from garnet.config.instruments import beamlines
 
 benchmark = 'shared/benchmark/int'
 
-#  
-
 def test_wand2():
 
     config_file = 'wand2_reduction_plan.yaml'
     reduction_plan = os.path.abspath(os.path.join('./tests/data', config_file))
     script = os.path.abspath('./src/garnet/workflow.py')
-    command = ['python', script, config_file, 'int', '1']
+    command = ['python', script, config_file, 'int', '4']
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
@@ -110,11 +108,11 @@ def test_ellipsoid():
 
     Qx, Qy, Qz = np.meshgrid(Qx, Qy, Qz, indexing='ij')
 
-    params = 1, 0, -1, 0.5, 0.5, 0.5, [1,0,0], [0,1,0], [0,0,1]
+    params = 1.05, 0.05, -1.15, 0.5, 0.5, 0.5, [1,0,0], [0,1,0], [0,0,1]
 
-    ellipsoid = PeakEllipsoid(*params)
+    ellipsoid = PeakEllipsoid(*params, 1, 1)
 
-    *params, _ = ellipsoid.fit(Qx, Qy, Qz, data, norm)
+    params = ellipsoid.fit(Qx, Qy, Qz, data, norm)
 
     intens, sig = ellipsoid.integrate(Qx, Qy, Qz, data, norm, *params)
 
@@ -125,10 +123,10 @@ def test_ellipsoid():
     S = ellipsoid.S_matrix(*ellipsoid.scale(*radii, s=0.25),
                            *ellipsoid.angles(*vectors))
 
-    s = np.sqrt(np.diag(S))
-    sigma = np.sqrt(np.diag(cov))
+    s = np.sqrt(np.linalg.det(S))
+    sigma = np.sqrt(np.linalg.det(cov))
 
     assert np.isclose(intens, 1, rtol=0.1)
     assert intens > 3*sig
-    assert np.isclose(mu, Q0, atol=0.1).all()
-    assert np.isclose(s, sigma, atol=0.05).all()
+    assert np.isclose(mu, Q0, atol=0.01).all()
+    assert np.isclose(s, sigma, atol=0.0001).all()

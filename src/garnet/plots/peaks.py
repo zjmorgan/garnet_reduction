@@ -43,8 +43,6 @@ class PeakPlot:
 
         axes = [(ax[:-1]+ax[1:])*0.5 for ax in axes]
 
-        labels = ['{} ({})'.format(dim.name, dim.getUnits()) for dim in dims]
-
         int_range = '-inf,inf'
 
         r0, r1, r2 = [ax[-1]-ax[0] for ax in axes]
@@ -54,10 +52,7 @@ class PeakPlot:
                                2,
                                figsize=(6.4,6.4),
                                width_ratios=[r0,r2],
-                               height_ratios=[r2,r1],
-                               sharex='col',
-                               sharey='row')
-        ax[0,1].set_axis_off()
+                               height_ratios=[r2,r1])
 
         cfill = ax[1,0].pcolormesh(axes[0],
                                    axes[1],
@@ -65,8 +60,8 @@ class PeakPlot:
                                    shading='nearest')
         ax[1,0].minorticks_on()
         ax[1,0].set_aspect(1)
-        ax[1,0].set_xlabel(labels[0])
-        ax[1,0].set_ylabel(labels[1])
+        ax[1,0].set_xlabel(r'$Q_x$ [$\AA^{-1}$]')
+        ax[1,0].set_ylabel(r'$Q_y$ [$\AA^{-1}$]')
 
         cfill = ax[0,0].pcolormesh(axes[0],
                                    axes[2],
@@ -74,8 +69,9 @@ class PeakPlot:
                                    shading='nearest')
         ax[0,0].minorticks_on()
         ax[0,0].set_aspect(1)
-        ax[0,0].set_xlabel('')
-        ax[0,0].set_ylabel(labels[2])
+        ax[0,0].set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
+        ax[0,0].sharex(ax[1,0])
+        # ax[0,0].xaxis.set_ticklabels([])
 
         cfill = ax[1,1].pcolormesh(axes[2],
                                    axes[1],
@@ -83,23 +79,27 @@ class PeakPlot:
                                    shading='nearest')
         ax[1,1].minorticks_on()
         ax[1,1].set_aspect(1)
-        ax[1,1].set_xlabel(labels[2])
-        ax[1,1].set_ylabel('')
+        ax[1,1].set_xlabel(r'$Q_z$ [$\AA^{-1}$]')
+        ax[1,1].sharey(ax[1,0])
+        # ax[1,1].yaxis.set_ticklabels([])
 
         cbar = fig.colorbar(cfill, ax=ax)
         cbar.ax.minorticks_on()
+        cbar.ax.set_ylabel(r'Intensity')
 
         self.fig = fig
         self.ax = ax
 
-    def add_ellipsoid(self, c0, c1, c2, r0, r1, r2, v0, v1, v2):
+    def add_profile_fit(self, x, y, e, y_fit):
 
-        c = [c0, c1, c2]        
+        ax = self.ax
 
-        W = np.column_stack([v0, v1, v2])
-        V = np.diag([r0**2,r1**2,r2**2])
+        ax[0,1].errorbar(x, y, e, fmt='o')
+        ax[0,1].errorbar(x, y_fit)
+        ax[0,1].minorticks_on()
+        ax[0,1].set_xlabel(r'$|Q|$ [$\AA^{-1}$]')
 
-        S = np.dot(np.dot(W, V), W.T)
+    def add_ellipsoid(self, c, S):
 
         r = np.sqrt(np.diag(S))
 

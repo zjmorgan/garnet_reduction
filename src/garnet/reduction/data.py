@@ -39,6 +39,10 @@ from mantid.simpleapi import (Load,
                               AddSampleLog,
                               CopySample,
                               DeleteWorkspace,
+                              DeleteWorkspaces,
+                              CloneMDWorkspace,
+                              MergeMD,
+                              MergeMDFiles,
                               mtd)
 
 def DataModel(instrument_config):
@@ -350,6 +354,8 @@ class BaseDataModel:
                    RHSWorkspace=ws,
                    OutputWorkspace=merge)
 
+            DeleteWorkspace(Workspace=ws)
+
     def divide_histograms(self, ws, num, den):
         """
         Divide two histogram workspaces.
@@ -423,6 +429,44 @@ class BaseDataModel:
                SaveInstrument=sample_logs,
                SaveSample=sample_logs,
                SaveLogs=sample_logs)
+
+    def merge_Q_sample(self, filenames, filename, merge):
+        """
+        Merge Q-sample files into one.
+
+        Parameters
+        ----------
+        filenames : list
+            Name of Q-sample filenames to be combined.
+        filename: str
+            Name of Q-sample filename to be saved.
+        merge : str
+            Name of Q-sample workspace to be accumulated.
+
+        """
+
+        MergeMDFiles(Filenames=filenames,
+                     OutputFilenames=filename,
+                     Parallel=True,
+                     OutputWorkspace=merge)
+
+    def combine_Q_sample(self, combine, merge):
+        """
+        Merge Q-sample workspaces into one.
+
+        Parameters
+        ----------
+        combine : list
+            Name of Q-sample workspaces to be accumulated.
+        merge : str
+            Name of combined Q-sample workspace.
+
+        """
+
+        MergeMD(InputWorkspaces=combine,
+                OutputWorkspace=merge)
+
+        DeleteWorkspaces(WorkspaceList=combine)
 
     def add_UBW(self, ws, ub_file, projections):
         """
@@ -515,7 +559,7 @@ class MonochromaticData(BaseDataModel):
             self.wavelength = wl
             self.wavelength_band = [0.98*wl, 1.02*wl]
 
-        self.Q_max = 4*np.pi/self.wavelength*np.sin(0.5*self.theta_max)
+        self.Q_max = 4*np.pi/self.wavelength*np.sin(self.theta_max)
 
         self.set_goniometer(histo_name)
 
@@ -543,6 +587,7 @@ class MonochromaticData(BaseDataModel):
                                 LorentzCorrection=lorentz_corr,
                                 MinValues=Q_min_vals,
                                 MaxValues=Q_max_vals,
+                                MaxRecursionDepth=10,
                                 OutputWorkspace=md_name)
 
     def load_generate_normalization(self, filename, histo_name=None):
@@ -594,6 +639,7 @@ class MonochromaticData(BaseDataModel):
                                         LorentzCorrection=False,
                                         MinValues=Q_min_vals,
                                         MaxValues=Q_max_vals,
+                                        MaxRecursionDepth=10,
                                         OutputWorkspace='norm')
 
     def load_background(self, filename, histo_name=None):
@@ -907,6 +953,7 @@ class LaueData(BaseDataModel):
                         LorentzCorrection=lorentz_corr,
                         MinValues=Q_min_vals,
                         MaxValues=Q_max_vals,
+                        MaxRecursionDepth=10,
                         OutputWorkspace=md_name)
 
     def load_generate_normalization(self, vanadium_file, spectrum_file):

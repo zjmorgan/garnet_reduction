@@ -604,7 +604,7 @@ class PeakModel:
 
     def set_peak_intensity(self, no, intens, sig):
         """
-        Update the peak intensity
+        Update the peak intensity.
 
         Parameters
         ----------
@@ -622,7 +622,7 @@ class PeakModel:
 
     def get_peak_name(self, no):
         """
-        Name of peak
+        Name of peak.
 
         Parameters
         ----------
@@ -635,16 +635,26 @@ class PeakModel:
             Readable name of peak.
 
         """
-    
+
         peak = mtd[self.peaks].getPeak(no)
 
         run = peak.getRunNumber()
         hkl = peak.getIntHKL()
         mnp = peak.getIntMNP()
-        d = peak.getDSpacing()
 
-        template = 'run#{}_d={:.4f}_({},{},{})_({},{},{})'
-        return template.format(run,d,*hkl,*mnp)
+        if HasUB(Workspace=self.peaks):
+            ol = mtd[self.peaks].sample().getOrientedLattice()
+            mod_1 = ol.getModVec(0)
+            mod_2 = ol.getModVec(1)
+            mod_3 = ol.getModVec(2)
+            h, k, l, m, n, p = *hkl, *mnp
+            dh, dk, dl = m*np.array(mod_1)+n*np.array(mod_2)+p*np.array(mod_3)
+            d = ol.d(V3D(h+dh,k+dk,l+dl))
+        else:
+            d = peak.getDSpacing()
+
+        name = 'run#{}_d={:.4f}_({:.0f},{:.0f},{:.0f})_({:.0f},{:.0f},{:.0f})'
+        return name.format(run,d,*hkl,*mnp)
 
     def get_peak_shape(self, no):
         """

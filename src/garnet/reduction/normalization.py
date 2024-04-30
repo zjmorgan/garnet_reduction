@@ -36,8 +36,9 @@ class Normalization:
         assert np.abs(np.linalg.det(self.params['Projections'])) > 0
 
         assert len(self.params['Bins']) == 3
+        assert all([type(val) is int for val in self.params['Bins']])
         assert (np.array(self.params['Bins']) > 0).all()
-        assert np.product(self.params['Bins']) < 1001**3 # memory usage limit
+        assert np.prod(self.params['Bins']) < 1001**3 # memory usage limit
 
         assert len(self.params['Extents']) == 3
         assert (np.diff(self.params['Extents'], axis=1) >= 0).all()
@@ -101,7 +102,7 @@ class Normalization:
                 if self.plan['UBFile'] is not None:
 
                     data.load_clear_UB(self.plan['UBFile'], 'md')
-    
+
                 data.load_background(self.plan.get('BackgroundFile'), 'md')
 
                 data.normalize_to_hkl('md',
@@ -117,10 +118,10 @@ class Normalization:
                     data.load_data('md', self.plan['IPTS'], run)
 
                     if self.plan['UBFile'] is not None:
-    
+
                         data.load_clear_UB(self.plan['UBFile'], 'md')
 
-                    data.load_background(self.plan.get('BackgroundFile'),'md')
+                    data.load_background(self.plan.get('BackgroundFile'), 'md')
 
                     data.normalize_to_hkl('md',
                                           self.params['Projections'],
@@ -154,15 +155,69 @@ class Normalization:
         if len(ws) > 0:
             ws = '_'+ws
 
-        return self.symmetry_name(file).replace('.nxs', ws+'.nxs')
+        return self.append_name(file).replace('.nxs', ws+'.nxs')
 
-    def symmetry_name(self, file):
+    def append_name(self, file):
+
+        append = self.projection_name() \
+               + self.extents_name() \
+               + self.binning_name() \
+               + self.symmetry_name()
+
+        name, ext = os.path.splitext(file)
+
+        return name+append+ext
+
+    def extents_name(self):
+
+        extents = self.params.get('Extents')
+
+        return ''.join(['_[{},{}]'.format(*extent) for extent in extents])
+
+    def binning_name(self):
+
+        bins = self.params.get('Bins')
+
+        return '_'+'x'.join(np.array(bins).astype(str).tolist())
+
+    def symmetry_name(self):
 
         symmetry = self.params.get('Symmetry')
 
         name = '' if symmetry is None else '_'+symmetry.replace(' ', '')
 
-        return file.replace('.nxs', name.replace('/', '_')+'.nxs')
+        return name.replace('/', '_')
+
+    def projection_name(self):
+
+        W = np.column_stack(self.params['Projections'])
+
+        char_dict = {0: '0', 1: '{1}', -1: '-{1}'}
+
+        chars = ['h', 'k', 'l']
+
+        axes = []
+        for j in [0, 1]:
+            axis = []
+            for w in W[:,j]:
+                char = chars[np.argmax(W[:, j])]
+                axis.append(char_dict.get(w, '{0}{1}').format(j, char))
+            axes.append(axis)
+
+        result = []
+        for item0, item1 in zip(axes[0], axes[1]):
+            if item0 == '0':
+                result.append(item1)
+            elif item1 == '0':
+                result.append(item0)
+            elif '-' in item1:
+                result.append(item0+item1)
+            else:
+                result.append(item0+'+'+item1)
+
+        proj = '_('+','.join(result)+')'      
+
+        return proj
 
     @staticmethod
     def combine_parallel(plan, files):

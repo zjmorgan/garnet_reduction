@@ -18,21 +18,26 @@ def test_get_file():
 
     data = Normalization(rp.plan).get_file(file, ws='')
 
-    assert data == file
+    base = '/tmp/test'
+    app = '_(h,k,0)_[-10,10]_[-10,10]_[-10,10]_201x201x201'
+    ext = '.nxs'
+    symm = '_2_m'
+
+    assert data == base+app+ext
 
     data = Normalization(rp.plan).get_file(file, ws='data')
 
-    assert data == '/tmp/test_data.nxs' 
-    
+    assert data == base+app+'_data'+ext
+
     rp.plan['Normalization']['Symmetry'] = '2/m'
 
     data = Normalization(rp.plan).get_file(file, ws='')
 
-    assert data == '/tmp/test_2_m.nxs' 
+    assert data == base+app+symm+ext
 
     data = Normalization(rp.plan).get_file(file, ws='data')
 
-    assert data == '/tmp/test_2_m_data.nxs'
+    assert data == base+app+symm+'_data'+ext
 
 def test_corelli():
 

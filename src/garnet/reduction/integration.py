@@ -58,11 +58,20 @@ class Integration:
         plan['Runs'] = runs
         plan['OutputName'] += '_p{}'.format(proc)
 
+        data = DataModel(beamlines[plan['Instrument']])
+
         instance = Integration(plan)
 
-        return instance.integrate()
+        if data.laue:
+            return instance.laue_integrate()
+        else:
+            return instance.monochromatic_integrate()
 
-    def integrate(self):
+    def get_plot_path(self):
+        
+        return os.path.join(self.plan['OutputPath'], 'integration', 'plots')
+
+    def laue_integrate(self):
 
         output_file = os.path.join(self.plan['OutputPath'],
                                    'integration',
@@ -76,113 +85,20 @@ class Integration:
 
         runs = self.plan['Runs']
 
-        plot_path = os.path.join(self.plan['OutputPath'],
-                                 'integration',
-                                 'plots')
+        plot_path = self.get_plot_path()
 
-        if data.laue:
+        data.load_generate_normalization(self.plan['VanadiumFile'],
+                                         self.plan['FluxFile'])
 
-            data.load_generate_normalization(self.plan['VanadiumFile'],
-                                             self.plan['FluxFile'])
+        for run in runs:
 
-            for run in runs:
+            data.load_data('data', self.plan['IPTS'], run)
 
-                data.load_data('data', self.plan['IPTS'], run)
+            data.apply_calibration('data',
+                                   self.plan.get('DetectorCalibration'),
+                                   self.plan.get('TubeCalibration'))
 
-                data.apply_calibration('data',
-                                       self.plan.get('DetectorCalibration'),
-                                       self.plan.get('TubeCalibration'))
-
-                data.crop_for_normalization('data')
-
-                data.convert_to_Q_sample('data', 'md_data', lorentz_corr=False)
-                data.convert_to_Q_sample('data', 'md_corr', lorentz_corr=True)
-
-                data.load_clear_UB(self.plan['UBFile'], 'data')
-
-                peaks.predict_peaks('data',
-                                    'peaks',
-                                    self.params['Centering'],
-                                    self.params['MinD'],
-                                    lamda_min,
-                                    lamda_max)
-
-                if self.params['MaxOrder'] > 0:
-
-                    peaks.predict_modulated_peaks('combine',
-                                                  self.params['MinD'],
-                                                  lamda_min,
-                                                  lamda_max,
-                                                  self.params['ModVec1'],
-                                                  self.params['ModVec2'],
-                                                  self.params['ModVec3'],
-                                                  self.params['MaxOrder'],
-                                                  self.params['CrossTerms'])
-
-                r_cut = self.params['Radius']
-
-                rad, sig_noise, intens = peaks.intensity_vs_radius('md_corr',
-                                                                   'peaks',
-                                                                   r_cut)
-
-                sphere = PeakSphere(r_cut)
-                r_cut = sphere.fit(rad, sig_noise)
-
-                peaks.integrate_peaks('md_corr',
-                                      'peaks',
-                                      r_cut,
-                                      method='ellipsoid')
-
-                peaks.remove_weak_peaks('peaks')
-
-                rad, sig_noise, intens = peaks.intensity_vs_radius('md_corr',
-                                                                   'peaks',
-                                                                   r_cut)
-
-                peak = PeakModel('peaks')
-
-                n = peak.get_number_peaks()
-
-                for i in range(n):
-
-                    params = peak.get_peak_shape(i)
-
-                    bins, extents = self.bin_extent(*params, r_cut)
-
-                    d, n, Q0, Q1, Q2 = data.normalize_to_Q_sample('md_data',
-                                                                  extents,
-                                                                  bins)
-
-                    ellipsoid = PeakEllipsoid(*params)
-
-                    *params, result = ellipsoid.fit(Q0, Q1, Q2, d, n)
-
-                    peak.set_peak_shape(i, *params)
-
-                    intens, sig = ellipsoid.integrate(Q0,
-                                                      Q1,
-                                                      Q2,
-                                                      d,
-                                                      n,
-                                                      *params)
-
-                    peak.set_peak_intensity(i, intens, sig)
-
-                    plot = PeakPlot('md_data_data', 'md_data_norm')
-
-                    plot.add_ellipsoid(*params)
-
-                    peak_name = peak.get_peak_name(i)
-
-                    plot.save_plot(os.path.join(plot_path, peak_name+'.png'))
-
-                peaks.combine_peaks('peaks', 'combine')
-
-        else:
-
-            data.load_data('data', self.plan['IPTS'], runs)
-
-            data.load_generate_normalization(self.plan['VanadiumFile'], 'data')
+            data.crop_for_normalization('data')
 
             data.convert_to_Q_sample('data', 'md_data', lorentz_corr=False)
             data.convert_to_Q_sample('data', 'md_corr', lorentz_corr=True)
@@ -190,7 +106,7 @@ class Integration:
             data.load_clear_UB(self.plan['UBFile'], 'data')
 
             peaks.predict_peaks('data',
-                                'combine',
+                                'peaks',
                                 self.params['Centering'],
                                 self.params['MinD'],
                                 lamda_min,
@@ -198,47 +114,37 @@ class Integration:
 
             if self.params['MaxOrder'] > 0:
 
-                Rs = peaks.get_all_goniometer_matrices('md_data')
-
-                for R in Rs:
-
-                    peaks.set_goniometer('combine', R)
-    
-                    peaks.predict_modulated_peaks('combine',
-                                                  self.params['MinD'],
-                                                  lamda_min,
-                                                  lamda_max,
-                                                  self.params['ModVec1'],
-                                                  self.params['ModVec2'],
-                                                  self.params['ModVec3'],
-                                                  self.params['MaxOrder'],
-                                                  self.params['CrossTerms'])
-
-            peaks.renumber_runs_by_index('md_data', 'combine')
-
-            peaks.remove_duplicate_peaks('combine')
+                peaks.predict_modulated_peaks('combine',
+                                              self.params['MinD'],
+                                              lamda_min,
+                                              lamda_max,
+                                              self.params['ModVec1'],
+                                              self.params['ModVec2'],
+                                              self.params['ModVec3'],
+                                              self.params['MaxOrder'],
+                                              self.params['CrossTerms'])
 
             r_cut = self.params['Radius']
 
             rad, sig_noise, intens = peaks.intensity_vs_radius('md_corr',
-                                                               'combine',
+                                                               'peaks',
                                                                r_cut)
 
             sphere = PeakSphere(r_cut)
             r_cut = sphere.fit(rad, sig_noise)
 
             peaks.integrate_peaks('md_corr',
-                                  'combine',
+                                  'peaks',
                                   r_cut,
                                   method='ellipsoid')
 
-            peaks.remove_weak_peaks('combine')
+            peaks.remove_weak_peaks('peaks')
 
             rad, sig_noise, intens = peaks.intensity_vs_radius('md_corr',
-                                                               'combine',
+                                                               'peaks',
                                                                r_cut)
 
-            peak = PeakModel('combine')
+            peak = PeakModel('peaks')
 
             n = peak.get_number_peaks()
 
@@ -252,9 +158,9 @@ class Integration:
                                                               extents,
                                                               bins)
 
-                ellipsoid = PeakEllipsoid(*params)
+                ellipsoid = PeakEllipsoid(*params, r_cut, r_cut)
 
-                *params, result = ellipsoid.fit(Q0, Q1, Q2, d, n)
+                params = ellipsoid.fit(Q0, Q1, Q2, d, n)
 
                 peak.set_peak_shape(i, *params)
 
@@ -265,21 +171,207 @@ class Integration:
                                                   n,
                                                   *params)
 
+                c, S, x, y, e, y_fit = ellipsoid.best_fit
+         
                 peak.set_peak_intensity(i, intens, sig)
-
+         
                 plot = PeakPlot('md_data_data', 'md_data_norm')
-
-                plot.add_ellipsoid(*params)
+         
+                plot.add_ellipsoid(c, S)
+                plot.add_profile_fit(x, y, e, y_fit)
 
                 peak_name = peak.get_peak_name(i)
 
                 plot.save_plot(os.path.join(plot_path, peak_name+'.png'))
+
+            peaks.combine_peaks('peaks', 'combine')
 
         peaks.remove_weak_peaks('combine')
 
         peaks.save_peaks(output_file, 'combine')
 
         return output_file
+
+    def laue_combine(self, files):
+
+        output_file = os.path.join(self.plan['OutputPath'],
+                                   'integration',
+                                   self.plan['OutputName']+'.nxs')
+
+        peaks = PeaksModel()
+
+        for file in files:
+
+            peaks.load_peaks(file, 'tmp')
+            peaks.combine_peaks('tmp', 'combine')
+            os.remove(file)
+
+        if mtd.doesExist('combine'):
+
+            peaks.save_peaks(output_file, 'combine')
+
+            opt = Optimization('combine')
+            opt.optimize_lattice(self.params['Cell'])
+
+            ub_file = os.path.splitext(output_file)[0]+'.mat'
+
+            ub = UBModel('combine')
+            ub.save_UB(ub_file)
+
+    def monochromatic_integrate(self):
+
+        output_file = os.path.join(self.plan['OutputPath'],
+                                   'integration',
+                                   self.plan['OutputName']+'.nxs')
+
+        data = DataModel(beamlines[self.plan['Instrument']])
+
+        runs = self.plan['Runs']
+
+        data.load_data('data', self.plan['IPTS'], runs)
+
+        data.load_generate_normalization(self.plan['VanadiumFile'], 'data')
+
+        data.convert_to_Q_sample('data', 'md_data', lorentz_corr=False)
+        data.convert_to_Q_sample('data', 'md_corr', lorentz_corr=True)
+
+        data.load_clear_UB(self.plan['UBFile'], 'data')
+
+        for ws in ['md_data', 'md_corr', 'norm']:
+            file = output_file.replace('.nxs', '_{}.nxs'.format(ws))
+            data.save_histograms(file, ws, sample_logs=True)
+
+        mtd.clear()
+
+        return output_file
+
+    def monochromatic_combine(self, files):
+
+        output_file = os.path.join(self.plan['OutputPath'],
+                                   'integration',
+                                   self.plan['OutputName']+'.nxs')
+
+        data = DataModel(beamlines[self.plan['Instrument']])
+
+        for ws in ['md_data', 'md_corr', 'norm']:
+            merge = []
+            for file in files:
+                md_file = file.replace('.nxs', '_{}.nxs'.format(ws))
+                data.load_histograms(md_file, md_file)
+                merge.append(md_file)
+                os.remove(md_file)
+            data.combine_Q_sample(merge, ws)
+            md_file = output_file.replace('.nxs', '_{}.nxs'.format(ws))
+            data.save_histograms(md_file, ws, sample_logs=True)
+
+        peaks = PeaksModel()
+
+        plot_path = self.get_plot_path()
+
+        lamda_min, lamda_max = data.wavelength_band
+
+        peaks.predict_peaks('md_data',
+                            'combine',
+                            self.params['Centering'],
+                            self.params['MinD'],
+                            lamda_min,
+                            lamda_max)
+
+        if self.params['MaxOrder'] > 0:
+
+            Rs = peaks.get_all_goniometer_matrices('md_data')
+
+            for R in Rs:
+
+                peaks.set_goniometer('combine', R)
+
+                peaks.predict_modulated_peaks('combine',
+                                              self.params['MinD'],
+                                              lamda_min,
+                                              lamda_max,
+                                              self.params['ModVec1'],
+                                              self.params['ModVec2'],
+                                              self.params['ModVec3'],
+                                              self.params['MaxOrder'],
+                                              self.params['CrossTerms'])
+
+        peaks.renumber_runs_by_index('md_data', 'combine')
+
+        peaks.remove_duplicate_peaks('combine')
+
+        r_cut = self.params['Radius']
+
+        rad, sig_noise, intens = peaks.intensity_vs_radius('md_corr',
+                                                           'combine',
+                                                           r_cut)
+
+        sphere = PeakSphere(r_cut)
+        r_cut = sphere.fit(rad, sig_noise)
+
+        peaks.integrate_peaks('md_corr',
+                              'combine',
+                              r_cut,
+                              method='ellipsoid')
+
+        # peaks.remove_weak_peaks('combine')
+
+        rad, sig_noise, intens = peaks.intensity_vs_radius('md_corr',
+                                                           'combine',
+                                                           r_cut)
+
+        peak = PeakModel('combine')
+
+        n = peak.get_number_peaks()
+
+        for i in range(n):
+
+            params = peak.get_peak_shape(i)
+
+            bins, extents = self.bin_extent(*params, r_cut)
+
+            d, n, Q0, Q1, Q2 = data.normalize_to_Q_sample('md_data',
+                                                          extents,
+                                                          bins)
+
+            ellipsoid = PeakEllipsoid(*params, r_cut, r_cut)
+
+            params = ellipsoid.fit(Q0, Q1, Q2, d, n)
+
+            peak.set_peak_shape(i, *params)
+
+            intens, sig = ellipsoid.integrate(Q0,
+                                              Q1,
+                                              Q2,
+                                              d,
+                                              n,
+                                              *params)
+
+            c, S, x, y, e, y_fit = ellipsoid.best_fit
+
+            peak.set_peak_intensity(i, intens, sig)
+
+            plot = PeakPlot('md_data_data', 'md_data_norm')
+
+            plot.add_ellipsoid(c, S)
+            plot.add_profile_fit(x, y, e, y_fit)
+
+            peak_name = peak.get_peak_name(i)
+
+            plot.save_plot(os.path.join(plot_path, peak_name+'.png'))
+
+        peaks.remove_weak_peaks('combine')
+
+        peaks.save_peaks(output_file, 'combine')
+ 
+        opt = Optimization('combine')
+        opt.optimize_lattice(self.params['Cell'])
+
+        ub_file = os.path.splitext(output_file)[0]+'.mat'
+
+        ub = UBModel('combine')
+        ub.save_UB(ub_file)
+
+        mtd.clear()
 
     def bin_extent(self, c0, c1, c2, r0, r1, r2, v0, v1, v2, r_cut):
         """
@@ -300,7 +392,7 @@ class Integration:
 
         dQ0, dQ1, dQ2 = dQ
 
-        bins = [41, 42, 43]
+        bins = [39, 40, 41]
         extents = [[c0-dQ0, c0+dQ0],
                    [c1-dQ1, c1+dQ1],
                    [c2-dQ2, c2+dQ2]]
@@ -312,33 +404,14 @@ class Integration:
 
         instance = Integration(plan)
 
-        return instance.combine(files)
+        data = DataModel(beamlines[plan['Instrument']])
 
-    def combine(self, files):
+        instance = Integration(plan)
 
-        output_file = os.path.join(self.plan['OutputPath'],
-                                   'integration',
-                                   self.plan['OutputName']+'.nxs')
-
-        peaks = PeaksModel()
-
-        for ind, file in enumerate(files):
-
-            peaks.load_peaks(file, 'tmp')
-            peaks.combine_peaks('tmp', 'combine')
-            os.remove(file)
-
-        if mtd.doesExist('combine'):
-
-            peaks.save_peaks(output_file, 'combine')
-
-            opt = Optimization('combine')
-            opt.optimize_lattice(self.params['Cell'])
-
-            ub_file = os.path.splitext(output_file)[0]+'.mat'
-
-            ub = UBModel('combine')
-            ub.save_UB(ub_file)
+        if data.laue:
+            return instance.laue_combine(files)
+        else:
+            return instance.monochromatic_combine(files)
 
 class PeakSphere:
 
@@ -385,7 +458,7 @@ class PeakSphere:
 
 class PeakEllipsoid:
 
-    def __init__(self, c0, c1, c2, r0, r1, r2, v0, v1, v2):
+    def __init__(self, c0, c1, c2, r0, r1, r2, v0, v1, v2, delta, r_cut):
 
         params = Parameters()
 
@@ -393,17 +466,17 @@ class PeakEllipsoid:
 
         phi, theta, omega = self.angles(v0, v1, v2)
 
-        vol, a10, a20 = self.aspect_volume(r0, r1, r2)
+        self.update_constraints(c0, c1, c2,
+                                r0, r1, r2,
+                                phi, theta, omega,
+                                delta, r_cut)
 
-        self.update_constraints(c0, c1, c2, vol, a10, a20, phi, theta, omega)
+    def update_constraints(self, c0, c1, c2, r0, r1, r2,
+                                 phi, theta, omega, delta, r_cut):
 
-    def update_constraints(self, c0, c1, c2, vol, a10, a20,
-                                 phi, theta, omega, delta=0.15):
-
-        self.params.add('vol', value=vol, min=0.1*vol, max=10*vol)
-
-        self.params.add('a10', value=a10, min=0.05, max=20)
-        self.params.add('a20', value=a20, min=0.05, max=20)
+        self.params.add('r0', value=r0, min=0.05*r0, max=r_cut)
+        self.params.add('r1', value=r1, min=0.05*r1, max=r_cut)
+        self.params.add('r2', value=r2, min=0.05*r2, max=r_cut)
 
         self.params.add('c0', value=c0, min=c0-delta, max=c0+delta, vary=True)
         self.params.add('c1', value=c1, min=c1-delta, max=c1+delta, vary=True)
@@ -413,14 +486,10 @@ class PeakEllipsoid:
         self.params.add('theta', value=theta, min=0, max=np.pi)
         self.params.add('omega', value=omega, min=-np.pi, max=np.pi)
 
-    def aspect_volume(self, r0, r1, r2):
-
-        vol = 4/3*np.pi*r0*r1*r2
-
-        a10 = r1/r0
-        a20 = r2/r0
-
-        return vol, a10, a20
+        Q = np.array([c0, c1, c2])   
+        self.Q = np.linalg.norm(Q)
+        self.Q_hat = Q/self.Q
+        self.r_cut = r_cut
 
     def eigenvectors(self, W):
 
@@ -442,14 +511,6 @@ class PeakEllipsoid:
         phi = np.arctan2(u1, u0)
 
         return phi, theta, omega
-
-    def radii(self, vol, a10, a20):
-
-        r0 = np.cbrt(vol*0.75/(np.pi*a10*a20))
-        r1 = a10*r0
-        r2 = a20*r0
-
-        return r0, r1, r2
 
     def scale(self, r0, r1, r2, s=1/4):
 
@@ -485,33 +546,42 @@ class PeakEllipsoid:
 
         return U
 
-    def residual(self, params, x, y, e):
+    def residual(self, params, x, y, e, Q, Y, E):
 
         Q0, Q1, Q2 = x
 
-        I = params['I'].value
+        H = params['H'].value
+        A = params['A'].value
         B = params['B'].value
+        C = params['C'].value
 
         c0 = params['c0']
         c1 = params['c1']
         c2 = params['c2']
 
-        vol = params['vol']
-        a10 = params['a10']
-        a20 = params['a20']
+        r0 = params['r0']
+        r1 = params['r1']
+        r2 = params['r2']
 
         phi = params['phi']
         theta = params['theta']
         omega = params['omega']
 
-        sigma0, sigma1, sigma2 = self.scale(*self.radii(vol, a10, a20))
+        sigma0, sigma1, sigma2 = self.scale(r0, r1, r2)
 
-        args = Q0, Q1, Q2, I, B, c0, c1, c2, \
+        args = Q0, Q1, Q2, H, B, c0, c1, c2, \
                sigma0, sigma1, sigma2, phi, theta, omega
 
-        yfit = self.func(*args)
+        y_fit = self.func(*args)
 
-        diff = (y-yfit)/e
+        args = Q, A, C, c0, c1, c2, sigma0, sigma1, sigma2, phi, theta, omega
+
+        Y_fit = self.profile(*args)
+
+        f = np.sqrt(np.sum(1/e**2))
+        F = np.sqrt(np.sum(1/E**2))
+
+        diff = np.concatenate([(y-y_fit)/e/f, (Y-Y_fit)/E/F])
 
         diff[~np.isfinite(diff)] = 1e+15
 
@@ -525,20 +595,38 @@ class PeakEllipsoid:
 
         return A*y+B
 
+    def profile(self, Q, A, B, mu0, mu1, mu2,
+                      sigma0, sigma1, sigma2, phi, theta, omega):
+
+        mu = mu0*self.Q_hat[0]+mu1*self.Q_hat[1]+mu2*self.Q_hat[2]
+
+        S = self.S_matrix(sigma0, sigma1, sigma2, phi, theta, omega)
+
+        sigma = np.sqrt(np.dot(np.dot(S, self.Q_hat), self.Q_hat))
+
+        y = self.generalized1d(Q, mu, sigma)
+
+        return A*y+B
+
     def generalized3d(self, Q0, Q1, Q2, mu0, mu1, mu2,
                             sigma0, sigma1, sigma2, phi, theta, omega):
 
         x0, x1, x2 = Q0-mu0, Q1-mu1, Q2-mu2
 
         inv_S = self.inv_S_matrix(sigma0, sigma1, sigma2, phi, theta, omega)
-        S = self.S_matrix(sigma0, sigma1, sigma2, phi, theta, omega)
 
         dx = [x0, x1, x2]
 
         d = np.sqrt(np.einsum('i...,i...->...',
                     np.einsum('ij,j...->i...', inv_S, dx), dx))
 
-        return np.exp(-0.5*d**2)/np.sqrt(np.linalg.norm(2*np.pi*S))
+        return np.exp(-0.5*d**2)#/np.sqrt(np.linalg.det(2*np.pi*S))
+
+    def generalized1d(self, Q, mu, sigma):
+
+        x = (Q-mu)/sigma
+
+        return np.exp(-0.5*x**2)#/np.sqrt(2*np.pi*sigma**2)
 
     def loss(self, r):
 
@@ -550,16 +638,34 @@ class PeakEllipsoid:
                np.diff(x1, axis=1).mean()*\
                np.diff(x2, axis=2).mean()
 
+    def bin_in_Q(self, x0, x1, x2, d, n):
+
+        Q = np.einsum('i,i...->...', self.Q_hat, [x0, x1, x2])
+        Q_bins = np.histogram_bin_edges(Q, bins='auto')
+
+        data_bins, _ = np.histogram(Q, bins=Q_bins, weights=d)
+        norm_bins, _ = np.histogram(Q, bins=Q_bins, weights=n)
+
+        y = data_bins/norm_bins
+        e = np.sqrt(data_bins)/norm_bins
+        x = (Q_bins[:-1]+Q_bins[1:])*0.5
+
+        return x, y, e
+
     def fit(self, x0, x1, x2, d, n):
 
         mask = (d > 0) & (n > 0)
 
-        d3x = self.voxel_volume(x0, x1, x2)
-
-        self.params.add('I', value=0, min=0, max=1, vary=False)
+        self.params.add('H', value=0, min=0, max=1, vary=False)
+        self.params.add('A', value=0, min=0, max=1, vary=False)
         self.params.add('B', value=0, min=0, max=1, vary=False)
+        self.params.add('C', value=0, min=0, max=1, vary=False)
 
-        I, B = 0, 0
+        A, C = 0, 0
+
+        Q = np.linspace(self.Q-self.r_cut, self.Q+self.r_cut)
+        Y = np.zeros_like(Q)
+        E = np.zeros_like(Q)
 
         if mask.sum() > 31:
 
@@ -571,17 +677,30 @@ class PeakEllipsoid:
             y_min = np.nanmin(y)
             y_max = np.nanmax(y)
 
-            y_int = np.nanmin(y-y_min)*d3x
+            if y_max <= y_min or np.isclose(y_max, 0):
+                y_max = 1
 
-            if y_int <= 0 or np.isclose(y_int, 0):
-                y_int = 1
-
-            self.params['I'].set(value=y_max, min=0, max=1000*y_int, vary=True)
+            self.params['H'].set(value=y_max, min=0, max=1e3*y_max, vary=True)
             self.params['B'].set(value=y_min, min=0, max=y_max, vary=True)
+
+            Q, Y, E = self.bin_in_Q(x0[mask],
+                                    x1[mask],
+                                    x2[mask],
+                                    d[mask],
+                                    n[mask])
+
+            Y_min = np.nanmin(Y)
+            Y_max = np.nanmax(Y)
+
+            if Y_max <= Y_min or np.isclose(Y_max, 0):
+                Y_max = 1
+
+            self.params['A'].set(value=Y_max, min=0, max=1e3*Y_max, vary=True)
+            self.params['C'].set(value=Y_min, min=0, max=Y_max, vary=True)
 
             out = Minimizer(self.residual,
                             self.params,
-                            fcn_args=(x, y, e),
+                            fcn_args=(x, y, e, Q, Y, E),
                             reduce_fcn=self.loss,
                             nan_policy='omit')
 
@@ -589,9 +708,9 @@ class PeakEllipsoid:
 
             self.params = result.params
 
-            self.params['vol'].set(vary=False)
-            self.params['a10'].set(vary=False)
-            self.params['a20'].set(vary=False)
+            self.params['r0'].set(vary=False)
+            self.params['r1'].set(vary=False)
+            self.params['r2'].set(vary=False)
 
             self.params['phi'].set(vary=False)
             self.params['theta'].set(vary=False)
@@ -602,27 +721,28 @@ class PeakEllipsoid:
             self.params['c2'].set(vary=False)
 
             self.params['B'].set(vary=True)
+            self.params['C'].set(vary=True)
 
-        I = self.params['I'].value
-        B = self.params['B'].value
+            out = Minimizer(self.residual,
+                            self.params,
+                            fcn_args=(x, y, e, Q, Y, E),
+                            reduce_fcn=self.loss,
+                            nan_policy='omit')
 
-        I_err = self.params['I'].stderr
-        B_err = self.params['B'].stderr
+            result = out.minimize(method='leastsq')
 
-        if I_err is None:
-            I_err = I
-        if B_err is None:
-            B_err = B
+            self.params = result.params
+
+        A = self.params['A'].value
+        C = self.params['C'].value
 
         c0 = self.params['c0'].value
         c1 = self.params['c1'].value
         c2 = self.params['c2'].value
 
-        vol = self.params['vol'].value
-        a10 = self.params['a10'].value
-        a20 = self.params['a20'].value
-
-        r0, r1, r2 = self.radii(vol, a10, a20)
+        r0 = self.params['r0'].value
+        r1 = self.params['r1'].value
+        r2 = self.params['r2'].value
 
         sigma0, sigma1, sigma2 = self.scale(r0, r1, r2)
 
@@ -630,58 +750,20 @@ class PeakEllipsoid:
         theta = self.params['theta'].value
         omega = self.params['omega'].value
 
-        result = self.func(x0, x1, x2, I, B, c0, c1, c2,
-                           sigma0, sigma1, sigma2, phi, theta, omega)
+        c = [c0, c1, c2]
+        S = self.S_matrix(r0, r1, r2, phi, theta, omega)
+
+        args = Q, A, C, c0, c1, c2, sigma0, sigma1, sigma2, phi, theta, omega
+
+        Y_fit = self.profile(*args)
+
+        self.best_fit = c, S, Q, Y, E, Y_fit
 
         U = self.U_matrix(phi, theta, omega)
 
         v0, v1, v2 = U.T
 
-        # if mask.sum() > 31:
-
-        #     weights = y-B
-
-        #     inv_S = self.inv_S_matrix(r0, r1, r2, phi, theta, omega)
-
-        #     dx = [x[0]-c0, x[1]-c1, x[2]-c2]
-
-        #     d = np.sqrt(np.einsum('i...,i...->...',
-        #                 np.einsum('ij,j...->i...', inv_S, dx), dx))
-
-        #     ellipsoid = d < 2
-
-        #     weights = weights[ellipsoid]
-        #     sum_weights = np.sum(weights)
-
-        #     d0 = x[0][ellipsoid]
-        #     d1 = x[1][ellipsoid]
-        #     d2 = x[2][ellipsoid]
-
-        #     c0 = np.sum(d0*weights)/sum_weights
-        #     c1 = np.sum(d1*weights)/sum_weights
-        #     c2 = np.sum(d2*weights)/sum_weights
-
-        #     s0 = np.sum((d0-c0)**2*weights)/sum_weights
-        #     s1 = np.sum((d1-c1)**2*weights)/sum_weights
-        #     s2 = np.sum((d2-c2)**2*weights)/sum_weights
-
-        #     s01 = np.sum((d0-c0)*(d1-c1)*weights)/sum_weights
-        #     s02 = np.sum((d0-c0)*(d2-c2)*weights)/sum_weights
-        #     s12 = np.sum((d1-c1)*(d2-c2)*weights)/sum_weights
-
-        #     S = np.array([[s0,s01,s02],[s01,s1,s12],[s02,s12,s2]])
-
-        #     if np.linalg.det(S) > 0:
-
-        #         V, W = np.linalg.eig(S)
-
-        #         if (V > 0).all():
-
-        #             r0, r1, r2 = 4*np.sqrt(V)
-
-        #             v0, v1, v2 = W.T
-
-        return c0, c1, c2, r0, r1, r2, v0, v1, v2, result
+        return c0, c1, c2, r0, r1, r2, v0, v1, v2
 
     def integrate(self, x0, x1, x2, d, n, c0, c1, c2, r0, r1, r2, v0, v1, v2):
 
