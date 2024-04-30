@@ -44,10 +44,18 @@ class ParallelTasks:
 
         with multiprocessing.get_context('spawn').Pool(n_proc) as pool:
             self.results = pool.starmap(self.safe_function_wrapper, join_args)
-            if self.combine is not None:
-                self.combine(plan, self.results)
             pool.close()
             pool.join()
+
+        config['MultiThreaded.MaxCores'] == '4'
+        os.environ.pop('OPENBLAS_NUM_THREADS')
+        os.environ.pop('MKL_NUM_THREADS')
+        os.environ.pop('NUMEXPR_NUM_THREADS')
+        os.environ.pop('OMP_NUM_THREADS')
+        os.environ.pop('TBB_THREAD_ENABLED')
+
+        if self.combine is not None:
+            self.combine(plan, self.results)
 
     def safe_function_wrapper(self, *args, **kwargs):
 

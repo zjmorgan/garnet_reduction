@@ -60,7 +60,6 @@ class Normalization:
                                    self.plan['OutputName']+'.nxs')
 
         data = DataModel(beamlines[self.plan['Instrument']])
-
         data.update_raw_path(self.plan)
 
         data.load_generate_normalization(self.plan['VanadiumFile'],
@@ -233,6 +232,7 @@ class Normalization:
                                    self.plan['OutputName']+'.nxs')
 
         data = DataModel(beamlines[self.plan['Instrument']])
+        data.update_raw_path(self.plan)
 
         for ind, file in enumerate(files):
 

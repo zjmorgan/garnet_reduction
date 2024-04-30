@@ -78,6 +78,7 @@ class Integration:
                                    self.plan['OutputName']+'.nxs')
 
         data = DataModel(beamlines[self.plan['Instrument']])
+        data.update_raw_path(self.plan)
 
         peaks = PeaksModel()
 
@@ -225,6 +226,7 @@ class Integration:
                                    self.plan['OutputName']+'.nxs')
 
         data = DataModel(beamlines[self.plan['Instrument']])
+        data.update_raw_path(self.plan)
 
         runs = self.plan['Runs']
 
@@ -252,6 +254,7 @@ class Integration:
                                    self.plan['OutputName']+'.nxs')
 
         data = DataModel(beamlines[self.plan['Instrument']])
+        data.update_raw_path(self.plan)
 
         for ws in ['md_data', 'md_corr', 'norm']:
             merge = []
@@ -261,8 +264,8 @@ class Integration:
                 merge.append(md_file)
                 os.remove(md_file)
             data.combine_Q_sample(merge, ws)
-            md_file = output_file.replace('.nxs', '_{}.nxs'.format(ws))
-            data.save_histograms(md_file, ws, sample_logs=True)
+            # md_file = output_file.replace('.nxs', '_{}.nxs'.format(ws))
+            # data.save_histograms(md_file, ws, sample_logs=True)
 
         peaks = PeaksModel()
 

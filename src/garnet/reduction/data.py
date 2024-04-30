@@ -464,6 +464,9 @@ class BaseDataModel:
         """
 
         MergeMD(InputWorkspaces=combine,
+                SplitInto=5,
+                SplitThreshold=1000,
+                MaxRecursionDepth=10,
                 OutputWorkspace=merge)
 
         DeleteWorkspaces(WorkspaceList=combine)
@@ -587,6 +590,7 @@ class MonochromaticData(BaseDataModel):
                                 LorentzCorrection=lorentz_corr,
                                 MinValues=Q_min_vals,
                                 MaxValues=Q_max_vals,
+                                SplitInto=5,
                                 MaxRecursionDepth=10,
                                 OutputWorkspace=md_name)
 
@@ -639,6 +643,7 @@ class MonochromaticData(BaseDataModel):
                                         LorentzCorrection=False,
                                         MinValues=Q_min_vals,
                                         MaxValues=Q_max_vals,
+                                        SplitInto=5,
                                         MaxRecursionDepth=10,
                                         OutputWorkspace='norm')
 
@@ -953,6 +958,7 @@ class LaueData(BaseDataModel):
                         LorentzCorrection=lorentz_corr,
                         MinValues=Q_min_vals,
                         MaxValues=Q_max_vals,
+                        SplitInto=5,
                         MaxRecursionDepth=10,
                         OutputWorkspace=md_name)
 
