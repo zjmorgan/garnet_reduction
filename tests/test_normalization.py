@@ -19,7 +19,7 @@ def test_get_file():
     data = Normalization(rp.plan).get_file(file, ws='')
 
     base = '/tmp/test'
-    app = '_(h,k,0)_[-10,10]_[-10,10]_[-10,10]_201x201x201'
+    app = '_(h,k,0)_[0,0,l]_[-10,10]_[-10,10]_[-10,10]_201x201x201'
     ext = '.nxs'
     symm = '_2_m'
 

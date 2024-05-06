@@ -1,6 +1,6 @@
 import os
 
-import multiprocess as multiprocessing
+import multiprocessing
 multiprocessing.set_start_method('spawn', force=True)
 
 import numpy as np

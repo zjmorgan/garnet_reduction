@@ -40,7 +40,6 @@ from mantid.simpleapi import (Load,
                               CopySample,
                               DeleteWorkspace,
                               DeleteWorkspaces,
-                              CloneMDWorkspace,
                               MergeMD,
                               MergeMDFiles,
                               mtd)
@@ -85,7 +84,6 @@ class BaseDataModel:
                 gon_ind += 1
 
         wl = instrument_config['Wavelength']
-
         self.wavelength_band = wl if type(wl) is list else [0.98*wl, 1.02*wl]
         self.wavelength = np.mean(wl) if type(wl) is list else wl
 
@@ -520,7 +518,7 @@ class MonochromaticData(BaseDataModel):
 
         self.laue = False
 
-    def load_data(self, histo_name, IPTS, runs):
+    def load_data(self, histo_name, IPTS, runs, grouping=None):
         """
         Load raw data into detector counts vs rotation index.
 
@@ -532,30 +530,32 @@ class MonochromaticData(BaseDataModel):
             Proposal number.
         runs : list, int
             List of run number(s).
+        grouping : str, optional
+            Options for grouping pixels.
 
         """
 
         filenames = self.file_names(IPTS, runs)
 
+        self.grouping = 'None' if grouping is None else grouping
+
         if self.instrument == 'DEMAND':
             HB3AAdjustSampleNorm(Filename=filenames,
                                  OutputType='Detector',
                                  NormaliseBy='None',
+                                 Grouping=self.grouping,
                                  OutputWorkspace=histo_name)
-            ei = mtd[histo_name].getExperimentInfo(0)
-            si = ei.spectrumInfo()
-            n_det = ei.getInstrument().getNumberDetectors()
-            self.theta_max = 0.5*np.max([si.twoTheta(i) for i in range(n_det)])
-            run = ei.run()
+            run = mtd[histo_name].getExperimentInfo(0).run()
             self.scale = run.getProperty('time').value
             
         else:
             LoadWANDSCD(Filename=filenames,
-                        Grouping='None',
+                        Grouping=grouping,
                         OutputWorkspace=histo_name)
             run = mtd[histo_name].getExperimentInfo(0).run()
-            self.theta_max = 0.5*np.max(run.getProperty('TwoTheta').value)
             self.scale = run.getProperty('duration').value
+
+        self.theta_max = 0.5*np.max(run.getProperty('TwoTheta').value)
 
         if run.hasProperty('wavelength'):
             wl = float(run.getProperty('wavelength').value)
@@ -614,11 +614,12 @@ class MonochromaticData(BaseDataModel):
                 HB3AAdjustSampleNorm(Filename=filename,
                                      OutputType='Detector',
                                      NormaliseBy='None',
+                                     Grouping=self.grouping,
                                      OutputWorkspace='van')
 
             else:
                 LoadWANDSCD(Filename=filename,
-                            Grouping='None',
+                            Grouping=self.grouping,
                             OutputWorkspace='van')
 
             if histo_name is not None:
@@ -665,13 +666,15 @@ class MonochromaticData(BaseDataModel):
             if self.instrument == 'DEMAND':
                 HB3AAdjustSampleNorm(Filename=filename,
                                      OutputType='Detector',
+                                     NormaliseBy='None',
+                                     Grouping=self.grouping,
                                      OutputWorkspace='bkg')
-                ei = mtd['bkg'].getExperimentInfo(0)
-                scale = ei.run().getProperty('time').value
+                run = mtd['bkg'].getExperimentInfo(0).run()
+                scale = run().getProperty('time').value
 
             else:
                 LoadWANDSCD(Filename=filename,
-                            Grouping='None',
+                            Grouping=self.grouping,
                             OutputWorkspace='bkg')
                 run = mtd['bkg'].getExperimentInfo(0).run()
                 scale = run.getProperty('duration').value

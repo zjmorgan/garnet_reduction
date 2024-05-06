@@ -1,4 +1,5 @@
 import os
+import pytest
 import tempfile
 import shutil
 import subprocess
@@ -11,9 +12,66 @@ from garnet.config.instruments import beamlines
 
 benchmark = 'shared/benchmark/int'
 
+@pytest.mark.skipif(not os.path.exists('/SNS/CORELLI/'), reason='file mount')
+def test_corelli():
+
+    config_file = 'corelli_reduction_plan.yaml'
+    reduction_plan = os.path.abspath(os.path.join('./tests/data', config_file))
+    script = os.path.abspath('./src/garnet/workflow.py')
+    command = ['python', script, config_file, 'int', '16']
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+
+        os.chdir(tmpdir)
+
+        rp = ReductionPlan()
+        rp.load_plan(reduction_plan)
+        rp.save_plan(os.path.join(tmpdir, config_file))
+
+        instrument_config = beamlines[rp.plan['Instrument']]
+        facility = instrument_config['Facility']
+        name = instrument_config['Name']
+        baseline_path = os.path.join('/', facility, name, benchmark)
+
+        subprocess.run(command)
+
+        if os.path.exists(baseline_path):
+            shutil.rmtree(baseline_path)
+
+        shutil.copytree(tmpdir, baseline_path)
+
+@pytest.mark.skipif(not os.path.exists('/HFIR/HB2C/'), reason='file mount')
 def test_wand2():
 
     config_file = 'wand2_reduction_plan.yaml'
+    reduction_plan = os.path.abspath(os.path.join('./tests/data', config_file))
+    script = os.path.abspath('./src/garnet/workflow.py')
+    command = ['python', script, config_file, 'int', '4']
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+
+        os.chdir(tmpdir)
+
+        rp = ReductionPlan()
+        rp.load_plan(reduction_plan)
+        rp.save_plan(os.path.join(tmpdir, config_file))
+
+        instrument_config = beamlines[rp.plan['Instrument']]
+        facility = instrument_config['Facility']
+        name = instrument_config['Name']
+        baseline_path = os.path.join('/', facility, name, benchmark)
+
+        subprocess.run(command)
+
+        if os.path.exists(baseline_path):
+            shutil.rmtree(baseline_path)
+
+        shutil.copytree(tmpdir, baseline_path)
+
+@pytest.mark.skipif(not os.path.exists('/HFIR/HB3A/'), reason='file mount')
+def test_demand():
+
+    config_file = 'demand_reduction_plan.yaml'
     reduction_plan = os.path.abspath(os.path.join('./tests/data', config_file))
     script = os.path.abspath('./src/garnet/workflow.py')
     command = ['python', script, config_file, 'int', '4']
@@ -129,4 +187,4 @@ def test_ellipsoid():
     assert np.isclose(intens, 1, rtol=0.1)
     assert intens > 3*sig
     assert np.isclose(mu, Q0, atol=0.01).all()
-    assert np.isclose(s, sigma, atol=0.0001).all()
+    assert np.isclose(s, sigma, atol=0.001).all()

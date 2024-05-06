@@ -8,6 +8,10 @@ sys.path.append(directory)
 directory = os.path.abspath(os.path.join(directory, '..'))
 sys.path.append(directory)
 
+from mantid import config
+
+config['Q.convention']= 'Crystallography'
+
 from garnet.reduction.plan import ReductionPlan
 from garnet.reduction.parallel import ParallelTasks
 from garnet.reduction.integration import Integration

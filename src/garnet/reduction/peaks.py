@@ -11,12 +11,14 @@ from mantid.simpleapi import (FindPeaksMD,
                               ExtractSingleSpectrum,
                               CombinePeaksWorkspaces,
                               CreatePeaksWorkspace,
+                              ConvertPeaksWorkspace,
                               CopySample,
                               CloneWorkspace,
                               SaveNexus,
                               LoadNexus,
                               AddPeakHKL,
                               HasUB,
+                              SetUB,
                               mtd)
 
 from mantid.kernel import V3D
@@ -214,7 +216,12 @@ class PeaksModel:
             if hasattr(mtd[ws], 'sample'):
                 ol = mtd[ws].sample().getOrientedLattice()
             else:
-                ol = mtd[ws].getExperimentInfo(0).sample().getOrientedLattice()
+                for i in range(mtd[ws].getNumExperimentInfo()):
+                    sample = mtd[ws].getExperimentInfo(i).sample()
+                    if sample.hasOrientedLattice():
+                        ol = sample.getOrientedLattice()
+                        SetUB(Workspace=ws, UB=ol.getUB())
+                ol = mtd[ws].getExperimentInfo(i).sample().getOrientedLattice()
 
             return max([ol.a(), ol.b(), ol.c()])
 
@@ -281,7 +288,6 @@ class PeaksModel:
                                       max_order=0,
                                       cross_terms=False):
         """
-
 
         Parameters
         ----------
@@ -469,6 +475,20 @@ class PeaksModel:
 
         SaveNexus(Filename=filename,
                   InputWorkspace=peaks)
+    
+    def convert_peaks(self, peaks):
+        """
+        Remove instrument from peaks.
+
+        Parameters
+        ----------
+        peaks : str
+            Name of peaks table.
+
+        """
+        
+        ConvertPeaksWorkspace(PeakWorkspace=peaks,
+                              OutputWorkspace=peaks)
 
     def combine_peaks(self, peaks, merge):
         """
@@ -730,6 +750,7 @@ class PeakModel:
                                    radii)
 
         mtd[self.peaks].getPeak(no).setPeakShape(shape)
+
 
 class PeaksStatisticsModel(PeaksModel):
 

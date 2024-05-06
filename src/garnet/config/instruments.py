@@ -15,6 +15,7 @@ beamlines = {
         'TubeCalibration': False,
         'Groupings': ['1x1', '2x2', '4x4'],
         'RawFile': 'nexus/SNAP_{}.nxs.h5',
+        'BankPixels': [256, 256],
     },
     'CORELLI': {
         'Facility': 'SNS',
@@ -36,6 +37,7 @@ beamlines = {
         'TubeCalibration': True,
         'Groupings': ['1x1', '1x2', '1x4'],
         'RawFile': 'nexus/CORELLI_{}.nxs.h5',
+        'BankPixels': [256, 16],
     },
     'TOPAZ': {
         'Facility': 'SNS',
@@ -57,6 +59,7 @@ beamlines = {
         'TubeCalibration': False,
         'Groupings': ['1x1', '2x2', '4x4'],
         'RawFile': 'nexus/TOPAZ_{}.nxs.h5',
+        'BankPixels': [256, 256],
     },
     'MANDI': {
         'Facility': 'SNS',
@@ -81,6 +84,7 @@ beamlines = {
         'TubeCalibration': False,
         'Groupings': ['1x1', '2x2', '4x4'],
         'RawFile': 'nexus/MANDI_{}.nxs.h5',
+        'BankPixels': [256, 256],
     },
     'WAND²': {
         'Facility': 'HFIR',
@@ -103,6 +107,7 @@ beamlines = {
         'TubeCalibration': False,
         'Groupings': ['1x1', '2x2', '4x4'],
         'RawFile': 'nexus/HB2C_{}.nxs.h5',
+        'BankPixels': [480, 512],
     },
     'DEMAND': {
         'Facility': 'HFIR',
@@ -124,5 +129,6 @@ beamlines = {
         'TubeCalibration': False,
         'Groupings': ['1x1'],
         'RawFile': 'shared/autoreduce/HB3A_exp{:04}_scan{:04}.nxs',
+        'BankPixels': [512, 512],
     },
 }

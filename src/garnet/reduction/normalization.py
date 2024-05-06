@@ -42,7 +42,7 @@ class Normalization:
 
         assert len(self.params['Extents']) == 3
         assert (np.diff(self.params['Extents'], axis=1) >= 0).all()
-
+        
     @staticmethod
     def normalize_parallel(plan, runs, proc):
 
@@ -55,9 +55,7 @@ class Normalization:
 
     def normalize(self):
 
-        output_file = os.path.join(self.plan['OutputPath'],
-                                   'normalization',
-                                   self.plan['OutputName']+'.nxs')
+        output_file = self.get_output_file()
 
         data = DataModel(beamlines[self.plan['Instrument']])
         data.update_raw_path(self.plan)
@@ -149,7 +147,40 @@ class Normalization:
 
         return output_file
 
+    def get_ouput_file(self):
+        """
+        Name of output file.
+
+        Returns
+        -------
+        output_file : str
+            Normalization output file.
+
+        """
+
+        output_file = os.path.join(self.plan['OutputPath'],
+                                   'normalization',
+                                   self.plan['OutputName']+'.nxs')
+
+        return output_file
+
     def get_file(self, file, ws=''):
+        """
+        Update filename with identifier name and optional workspace name.
+
+        Parameters
+        ----------
+        file : str
+            Original file name.
+        ws : str, optional
+            Name of workspace. The default is ''.
+
+        Returns
+        -------
+        output_file : str
+            File with updated name for identifier and workspace name.
+
+        """
 
         if len(ws) > 0:
             ws = '_'+ws
@@ -157,6 +188,20 @@ class Normalization:
         return self.append_name(file).replace('.nxs', ws+'.nxs')
 
     def append_name(self, file):
+        """
+        Update filename with identifier name 
+
+        Parameters
+        ----------
+        file : str
+            Original file name.
+
+        Returns
+        -------
+        output_file : str
+            File with updated name for identifier name.
+
+        """
 
         append = self.projection_name() \
                + self.extents_name() \
@@ -168,18 +213,49 @@ class Normalization:
         return name+append+ext
 
     def extents_name(self):
+        """
+        Min/max pairs for each dimensional extents.
+
+        `_[min_0,max_0]_[min_1,max_1]_[min_2,max_2]`
+
+        Returns
+        -------
+        extents : str
+            Underscore separated list.
+
+        """
 
         extents = self.params.get('Extents')
 
         return ''.join(['_[{},{}]'.format(*extent) for extent in extents])
 
     def binning_name(self):
+        """
+        Bin size for each dimension.
+        
+        `_N0xN1xN2`
 
+        Returns
+        -------
+        bins : str
+            Cross separated integers.
+
+        """
+        
         bins = self.params.get('Bins')
 
         return '_'+'x'.join(np.array(bins).astype(str).tolist())
 
     def symmetry_name(self):
+        """
+        Laue group name.
+
+        Returns
+        -------
+        symmetry : str
+            None or Hermann-Mauguin point group symbol.
+
+        """
 
         symmetry = self.params.get('Symmetry')
 
@@ -188,6 +264,15 @@ class Normalization:
         return name.replace('/', '_')
 
     def projection_name(self):
+        """
+        Axes projections.
+
+        Returns
+        -------
+        proj : str
+            Name of slices.
+
+        """
 
         W = np.column_stack(self.params['Projections'])
 
@@ -196,7 +281,7 @@ class Normalization:
         chars = ['h', 'k', 'l']
 
         axes = []
-        for j in [0, 1]:
+        for j in [0, 1, 2]:
             axis = []
             for w in W[:,j]:
                 char = chars[np.argmax(W[:, j])]
@@ -214,7 +299,7 @@ class Normalization:
             else:
                 result.append(item0+'+'+item1)
 
-        proj = '_('+','.join(result)+')'      
+        proj = '_('+','.join(result)+')'+'_['+','.join(axes[2])+']'
 
         return proj
 
@@ -226,10 +311,17 @@ class Normalization:
         return instance.combine(files)
 
     def combine(self, files):
+        """
+        Merge data and normalization files.
 
-        output_file = os.path.join(self.plan['OutputPath'],
-                                   'normalization',
-                                   self.plan['OutputName']+'.nxs')
+        Parameters
+        ----------
+        files : list
+            Files to be combined.
+
+        """
+
+        output_file = self.get_output_file()
 
         data = DataModel(beamlines[self.plan['Instrument']])
         data.update_raw_path(self.plan)
