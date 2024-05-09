@@ -37,7 +37,7 @@ beamlines = {
         'TubeCalibration': True,
         'Groupings': ['1x1', '1x2', '1x4'],
         'RawFile': 'nexus/CORELLI_{}.nxs.h5',
-        'BankPixels': [256, 16],
+        'BankPixels': [16, 256],
     },
     'TOPAZ': {
         'Facility': 'SNS',

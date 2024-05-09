@@ -42,7 +42,7 @@ class Normalization:
 
         assert len(self.params['Extents']) == 3
         assert (np.diff(self.params['Extents'], axis=1) >= 0).all()
-        
+
     @staticmethod
     def normalize_parallel(plan, runs, proc):
 
@@ -60,9 +60,6 @@ class Normalization:
         data = DataModel(beamlines[self.plan['Instrument']])
         data.update_raw_path(self.plan)
 
-        data.load_generate_normalization(self.plan['VanadiumFile'],
-                                         self.plan.get('FluxFile'))
-
         runs = self.plan['Runs']
 
         if data.laue:
@@ -70,6 +67,9 @@ class Normalization:
             for run in runs:
 
                 data.load_data('data', self.plan['IPTS'], run)
+
+                data.load_generate_normalization(self.plan['VanadiumFile'],
+                                                 self.plan.get('FluxFile'))
 
                 data.apply_calibration('data',
                                        self.plan.get('DetectorCalibration'),
@@ -94,8 +94,13 @@ class Normalization:
 
             if self.plan['Instrument'] == 'WAND²':
 
-                data.load_data('md', self.plan['IPTS'], runs)
+                data.load_data('md',
+                               self.plan['IPTS'],
+                               runs,
+                               self.plan.get('Grouping'))
 
+                data.load_generate_normalization(self.plan['VanadiumFile'])
+        
                 if self.plan['UBFile'] is not None:
 
                     data.load_clear_UB(self.plan['UBFile'], 'md')
@@ -112,7 +117,12 @@ class Normalization:
 
                 for run in runs:
 
-                    data.load_data('md', self.plan['IPTS'], run)
+                    data.load_data('md', 
+                                   self.plan['IPTS'],
+                                   run,
+                                   self.plan.get('Grouping'))
+
+                    data.load_generate_normalization(self.plan['VanadiumFile'])
 
                     if self.plan['UBFile'] is not None:
 
@@ -144,23 +154,6 @@ class Normalization:
             data.save_histograms(norm_file, 'md_bkg_norm')
 
         mtd.clear()
-
-        return output_file
-
-    def get_ouput_file(self):
-        """
-        Name of output file.
-
-        Returns
-        -------
-        output_file : str
-            Normalization output file.
-
-        """
-
-        output_file = os.path.join(self.plan['OutputPath'],
-                                   'normalization',
-                                   self.plan['OutputName']+'.nxs')
 
         return output_file
 
@@ -249,6 +242,7 @@ class Normalization:
     def symmetry_name(self):
         """
         Laue group name.
+        Spaces are removed and slashes are replaced with underscore.
 
         Returns
         -------
@@ -322,6 +316,7 @@ class Normalization:
         """
 
         output_file = self.get_output_file()
+        diag_file = self.get_diagnostic_file()
 
         data = DataModel(beamlines[self.plan['Instrument']])
         data.update_raw_path(self.plan)
@@ -354,8 +349,8 @@ class Normalization:
             os.remove(data_file)
             os.remove(norm_file)
 
-        data_file = self.get_file(output_file, 'data')
-        norm_file = self.get_file(output_file, 'norm')
+        data_file = self.get_file(diag_file, 'data')
+        norm_file = self.get_file(diag_file, 'norm')
         result_file = self.get_file(output_file, '')
 
         data.divide_histograms('result', 'data', 'norm')
@@ -378,8 +373,8 @@ class Normalization:
 
         if mtd.doesExist('bkg_data') and mtd.doesExist('bkg_norm'):
 
-            data_file = self.get_file(output_file, 'bkg_data')
-            norm_file = self.get_file(output_file, 'bkg_norm')
+            data_file = self.get_file(diag_file, 'bkg_data')
+            norm_file = self.get_file(diag_file, 'bkg_norm')
 
             data.save_histograms(data_file, 'bkg_data', sample_logs=True)
             data.save_histograms(norm_file, 'bkg_norm', sample_logs=True)
@@ -393,3 +388,48 @@ class Normalization:
 
             sub_output_file = self.get_file(output_file, 'sub_bkg')
             data.save_histograms(sub_output_file, 'sub', sample_logs=True)
+
+    def get_output_file(self):
+        """
+        Name of output file.
+
+        Returns
+        -------
+        output_file : str
+            Normalization output file.
+
+        """
+
+        output_file = os.path.join(self.plan['OutputPath'],
+                                   'normalization',
+                                   self.plan['OutputName']+'.nxs')
+
+        return output_file
+
+    def get_plot_path(self):
+        """
+        Plot directory.
+
+        Returns
+        -------
+        plot_path : str
+            Path name to save plots.
+
+        """
+
+        return os.path.join(self.plan['OutputPath'], 'normalization', 'plots')
+
+    def get_diagnostic_file(self):
+        """
+        Diagnostic directory.
+
+        Returns
+        -------
+        diag_path : str
+            Path name to save diagnostics.
+
+        """
+
+        return os.path.join(self.plan['OutputPath'], 
+                            'normalization/diagnostics', 
+                            self.plan['OutputName']+'.nxs')

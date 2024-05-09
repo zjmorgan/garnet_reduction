@@ -10,7 +10,7 @@ sys.path.append(directory)
 
 from mantid import config
 
-config['Q.convention']= 'Crystallography'
+config['Q.convention'] = 'Crystallography'
 
 from garnet.reduction.plan import ReductionPlan
 from garnet.reduction.parallel import ParallelTasks
@@ -69,6 +69,11 @@ if __name__ == '__main__':
             os.mkdir(output)
 
         output = os.path.join(rp.plan['OutputPath'], path, 'plots')
+        if os.path.exists(output):
+            shutil.rmtree(output)
+        os.mkdir(output)
+
+        output = os.path.join(rp.plan['OutputPath'], path, 'diagnostics')
         if os.path.exists(output):
             shutil.rmtree(output)
         os.mkdir(output)

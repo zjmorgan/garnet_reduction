@@ -1,32 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 from matplotlib.patches import Ellipse
 from matplotlib.transforms import Affine2D
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 
 import scipy.special
 
-class BasePlot:
-
-    def __init__(self):
-
-        plt.close('all')
-
-        self.fig = plt.figure()
-
-    def save_plot(self, filename):
-        """
-        Save plot.
-
-        Parameters
-        ----------
-        filename : str
-            Path to file.
-
-        """
-
-        self.fig.savefig(filename, bbox_inches='tight')
+from garnet.plots.base import BasePlot
 
 class RadiusPlot(BasePlot):
 
@@ -53,10 +36,13 @@ class RadiusPlot(BasePlot):
         ax.set_xlabel(r'$r$ [$\AA^{-1}$]')
 
     def add_sphere(self, r_cut, A, sigma):
-        
+
         self.ax.axvline(x=r_cut, color='k', linestyle='--')
 
-        x = np.linspace(*self.ax.get_xlim(), 256)
+        xlim = list(self.ax.get_xlim())
+        xlim[0] = 0
+
+        x = np.linspace(*xlim, 256)
 
         z = x/sigma
 
@@ -64,10 +50,11 @@ class RadiusPlot(BasePlot):
                np.sqrt(2/np.pi)*z*np.exp(-0.5*z**2))
 
         self.ax.plot(x, y, '-', color='C1')
+        self.ax.set_ylabel(r'$I/\sigma$')
 
 class PeakPlot(BasePlot):
 
-    def __init__(self, fitting):
+    def __init__(self, fitting, bkg):
 
         super(PeakPlot, self).__init__()
 
@@ -112,7 +99,7 @@ class PeakPlot(BasePlot):
 
         self.add_profile_fit(xye_1d, y_1d_fit)
         self.add_projection_fit(xye_2d, y_2d_fit)
-        self.add_ellipsoid_fit(xye_3d, y_3d_fit)
+        self.add_ellipsoid_fit(xye_3d, y_3d_fit, bkg)
 
     def _color_limits(self, y1, y2):
         """
@@ -140,7 +127,7 @@ class PeakPlot(BasePlot):
 
         return vmin, vmax
 
-    def add_ellipsoid_fit(self, xye, y_fit):
+    def add_ellipsoid_fit(self, xye, y_fit, bkg):
         """
         Three-dimensional ellipsoids.
 
@@ -168,6 +155,10 @@ class PeakPlot(BasePlot):
         y1_fit = np.nansum(y_fit, axis=1)
         y2_fit = np.nansum(y_fit, axis=2)
 
+        bkg0 = bkg[bkg.shape[0]//2,:,:]*1.0
+        bkg1 = bkg[:,bkg.shape[1]//2,:]*1.0
+        bkg2 = bkg[:,:,bkg.shape[2]//2]*1.0
+
         self.ellip = []
 
         gs = self.gs[2]
@@ -185,6 +176,8 @@ class PeakPlot(BasePlot):
                       vmax=vmax,
                       shading='nearest')
 
+        ax.contour(x0[:,0,0], x1[0,:,0], bkg2.T, levels=[0.5], zorder=1)
+
         ax.minorticks_on()
         ax.set_aspect(1)
         ax.xaxis.set_ticklabels([])
@@ -200,6 +193,8 @@ class PeakPlot(BasePlot):
                       vmin=vmin,
                       vmax=vmax,
                       shading='nearest')
+
+        ax.contour(x0[:,0,0], x1[0,:,0], bkg2.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -219,6 +214,8 @@ class PeakPlot(BasePlot):
                       vmax=vmax,
                       shading='nearest')
 
+        ax.contour(x0[:,0,0], x2[0,0,:], bkg1.T, levels=[0.5], zorder=1)
+
         ax.minorticks_on()
         ax.set_aspect(1)
         ax.xaxis.set_ticklabels([])
@@ -234,6 +231,8 @@ class PeakPlot(BasePlot):
                       vmin=vmin,
                       vmax=vmax,
                       shading='nearest')
+
+        ax.contour(x0[:,0,0], x2[0,0,:], bkg1.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -251,7 +250,10 @@ class PeakPlot(BasePlot):
                       y0.T,
                       vmin=vmin,
                       vmax=vmax,
-                      shading='nearest')
+                      shading='nearest',
+                      zorder=0)
+
+        ax.contour(x1[0,:,0], x2[0,0,:], bkg0.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -269,6 +271,8 @@ class PeakPlot(BasePlot):
                       vmin=vmin,
                       vmax=vmax,
                       shading='nearest')
+
+        ax.contour(x1[0,:,0], x2[0,0,:], bkg0.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -293,7 +297,7 @@ class PeakPlot(BasePlot):
 
         (xu, xv), y, e = xye
 
-        mask = np.isfinite(y) & (y > 0)
+        mask = np.isfinite(y)
         y_fit[~mask] = np.nan
 
         vmin, vmax = self._color_limits(y, y_fit)
@@ -315,7 +319,7 @@ class PeakPlot(BasePlot):
 
         ax.minorticks_on()
         ax.set_aspect(1)
-        ax.set_ylabel(r'$Q_v$ [$\AA^{-1}$]')
+        ax.set_ylabel(r'$\Delta{Q}_2$ [$\AA^{-1}$]')
         ax.xaxis.set_ticklabels([])
 
         ax = self.fig.add_subplot(gs[1,0])
@@ -331,8 +335,13 @@ class PeakPlot(BasePlot):
 
         ax.minorticks_on()
         ax.set_aspect(1)
-        ax.set_xlabel(r'$Q_u$ [$\AA^{-1}$]')
-        ax.set_ylabel(r'$Q_v$ [$\AA^{-1}$]')
+        ax.set_xlabel(r'$\Delta{Q}_1$ [$\AA^{-1}$]')
+        ax.set_ylabel(r'$\Delta{Q}_2$ [$\AA^{-1}$]')
+
+        norm = Normalize(vmin, vmax)
+        im = ScalarMappable(norm=norm)
+        cb = self.fig.colorbar(im, ax=self.proj)
+        cb.ax.minorticks_on()
 
     def add_profile_fit(self, xye, y_fit):
         """
@@ -358,7 +367,7 @@ class PeakPlot(BasePlot):
         ax.errorbar(x, y, e, fmt='o')
         ax.plot(x, y_fit, '.', color='C1')
         ax.minorticks_on()
-        ax.set_xlabel(r'$|Q|$ [$\AA^{-1}$]')
+        ax.set_xlabel(r'$\Delta{Q}$ [$\AA^{-1}$]')
 
     def add_ellipsoid(self, c, S, W, vals):
         """
@@ -391,7 +400,7 @@ class PeakPlot(BasePlot):
         sigma = 0.25*rad
 
         x = np.linspace(*self.prof.get_xlim(), 256)
-        y_fit = b+a*np.exp(-0.5*(x-mu)**2/sigma**2)
+        y_fit = b+a*np.exp(-0.5*(x-mu)**2/sigma**2)/np.sqrt(2*np.pi*sigma**2)
 
         self.prof.plot(x, y_fit, '-')
 
@@ -474,3 +483,29 @@ class PeakPlot(BasePlot):
 
             peak.set_transform(trans+ax.transData)
             ax.add_patch(peak)
+
+    def _sci_notation(self, x):
+        exp = int(np.floor(np.log10(abs(x))))
+        return '{:.2f}\\times 10^{{{}}}'.format(x / 10**exp, exp)
+
+    def add_peak_intensity(self, intens, sig_noise):
+
+        I = r'$I={}$ [arb. unit]'
+        I_sig = '$I/\sigma={:.1f}$'
+
+        title = I.format(self._sci_notation(intens[0]))+' '+\
+                I_sig.format(sig_noise[0])
+
+        self.prof.set_title(title)
+        self.proj[0].set_title(I.format(self._sci_notation(intens[1])))
+        self.proj[1].set_title(I_sig.format(sig_noise[1]))
+
+        I = r'$I={}$'
+
+        self.ellip[0].set_title(I.format(self._sci_notation(intens[2])))
+        self.ellip[1].set_title(I_sig.format(sig_noise[2]))
+
+        self.ellip[2].set_title(I.format(self._sci_notation(intens[3])))
+        self.ellip[3].set_title(I_sig.format(sig_noise[3]))
+
+        self.ellip[4].set_title('[arb. unit]')

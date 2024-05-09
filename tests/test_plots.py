@@ -28,12 +28,12 @@ def test_radius_plot():
     plot.add_sphere(radius, *vals)
 
     plot.save_plot(os.path.join(filepath, 'sphere.png'))
-    
+
 def test_peak_plot():
 
     np.random.seed(13)
 
-    nx, ny, nz = 39, 40, 41
+    nx, ny, nz = 31, 31, 31
 
     Qx_min, Qx_max = 0, 2
     Qy_min, Qy_max = -1.9, 2.1
@@ -44,10 +44,10 @@ def test_peak_plot():
     sigma_x, sigma_y, sigma_z = 0.2, 0.3, 0.4
     rho_yz, rho_xz, rho_xy = 0.5, -0.1, -0.15
 
-    a = 0.2
+    a = 0.3
     b = 0.5
     c = 1.3
-    d = 5
+    d = 5.0
 
     sigma_yz = sigma_y*sigma_z
     sigma_xz = sigma_x*sigma_z
@@ -59,7 +59,7 @@ def test_peak_plot():
 
     Q0 = np.array([Q0_x, Q0_y, Q0_z])
 
-    signal = np.random.multivariate_normal(Q0, cov, size=1000000)
+    signal = np.random.multivariate_normal(Q0, cov, size=10000)
 
     data_norm, bins = np.histogramdd(signal,
                                      density=False,
@@ -77,22 +77,42 @@ def test_peak_plot():
     Qy = 0.5*(y_bin_edges[1:]+y_bin_edges[:-1])
     Qz = 0.5*(z_bin_edges[1:]+z_bin_edges[:-1])
 
-    data = data_norm*c+b+a*(2*np.random.random(data_norm.shape)-1)
-    norm = np.full_like(data, d)
+    data_norm *= c
+    data_norm += b+a*(2*np.random.random(data_norm.shape)-1)
+
+    norm = np.full_like(data_norm, d)+Qx*0.0
+    data = data_norm*norm
+
+    mask = np.random.random(norm.shape) < 0.25
+    data[mask] = 0
+    norm[mask] = 0
 
     Qx, Qy, Qz = np.meshgrid(Qx, Qy, Qz, indexing='ij')
 
     params = 1.05, 0.05, -1.15, 0.5, 0.5, 0.5, [1,0,0], [0,1,0], [0,0,1]
 
-    ellipsoid = PeakEllipsoid(*params, 1, 1)
+    ellipsoid = PeakEllipsoid(*params, 2, 2)
 
     params = ellipsoid.fit(Qx, Qy, Qz, data, norm)
 
     c, S, W, *fitting = ellipsoid.best_fit 
-    vals = ellipsoid.interp_fit 
+    vals = ellipsoid.interp_fit
 
-    plot = PeakPlot(fitting)
+    intens, sig_noise = ellipsoid.intens_fit
+
+    ellipsoid.integrate(Qx, Qy, Qz, data, norm, *params)
+    bkg = ellipsoid.bkg
+
+    plot = PeakPlot(fitting, bkg)
 
     plot.add_ellipsoid(c, S, W, vals)
+    plot.add_peak_intensity(intens, sig_noise)
 
-    plot.save_plot(os.path.join(filepath, 'ellipsoid.png'))
+    file = os.path.join(filepath, 'ellipsoid.png')
+
+    # if os.path.exists(file):
+    #     os.remove(file)
+
+    plot.save_plot(file)
+
+    assert os.path.exists(file)

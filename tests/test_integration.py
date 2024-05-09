@@ -188,3 +188,16 @@ def test_ellipsoid():
     assert intens > 3*sig
     assert np.isclose(mu, Q0, atol=0.01).all()
     assert np.isclose(s, sigma, atol=0.001).all()
+
+def test_ellipsoid_methods():
+
+    params = 1.05, 0.05, -1.15, 0.5, 0.5, 0.5, [1,0,0], [0,1,0], [0,0,1]
+
+    ellipsoid = PeakEllipsoid(*params, 1, 1)
+
+    vals = 1., 2., 3., 0.2, 1.1, -0.4
+
+    S = ellipsoid.S_matrix(*vals)
+    inv_S = ellipsoid.inv_S_matrix(*vals)
+
+    assert np.allclose(np.linalg.inv(S), inv_S)

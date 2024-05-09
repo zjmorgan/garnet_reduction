@@ -8,6 +8,7 @@ from mantid.simpleapi import (Load,
                               LoadIsawDetCal,
                               ApplyCalibration,
                               PreprocessDetectorsToMD,
+                              ExtractMonitors,
                               LoadMask,
                               MaskDetectors,
                               SetGoniometer,
@@ -43,6 +44,10 @@ from mantid.simpleapi import (Load,
                               MergeMD,
                               MergeMDFiles,
                               mtd)
+
+from mantid import config
+
+config['Q.convention'] = 'Crystallography'
 
 def DataModel(instrument_config):
 
@@ -462,9 +467,6 @@ class BaseDataModel:
         """
 
         MergeMD(InputWorkspaces=combine,
-                SplitInto=5,
-                SplitThreshold=1000,
-                MaxRecursionDepth=10,
                 OutputWorkspace=merge)
 
         DeleteWorkspaces(WorkspaceList=combine)
@@ -547,7 +549,7 @@ class MonochromaticData(BaseDataModel):
                                  OutputWorkspace=histo_name)
             run = mtd[histo_name].getExperimentInfo(0).run()
             self.scale = run.getProperty('time').value
-            
+
         else:
             LoadWANDSCD(Filename=filenames,
                         Grouping=grouping,
@@ -590,8 +592,6 @@ class MonochromaticData(BaseDataModel):
                                 LorentzCorrection=lorentz_corr,
                                 MinValues=Q_min_vals,
                                 MaxValues=Q_max_vals,
-                                SplitInto=5,
-                                MaxRecursionDepth=10,
                                 OutputWorkspace=md_name)
 
     def load_generate_normalization(self, filename, histo_name=None):
@@ -644,8 +644,6 @@ class MonochromaticData(BaseDataModel):
                                         LorentzCorrection=False,
                                         MinValues=Q_min_vals,
                                         MaxValues=Q_max_vals,
-                                        SplitInto=5,
-                                        MaxRecursionDepth=10,
                                         OutputWorkspace='norm')
 
     def load_background(self, filename, histo_name=None):
@@ -850,16 +848,6 @@ class LaueData(BaseDataModel):
                                   OutputWorkspace=event_name,
                                   TimingOffset=self.time_offset)
 
-        if not mtd.doesExist('detectors'):
-
-            PreprocessDetectorsToMD(InputWorkspace=event_name,
-                                    OutputWorkspace='detectors')
-
-            two_theta = mtd['detectors'].column('TwoTheta')
-            self.theta_max = 0.5*np.max(two_theta)
-
-        self.calculate_maximum_Q()
-
         self.set_goniometer(event_name)
 
     def calculate_maximum_Q(self):
@@ -910,6 +898,19 @@ class LaueData(BaseDataModel):
                 LoadIsawDetCal(InputWorkspace=event_name,
                                Filename=detector_calibration)
 
+        if not mtd.doesExist('detectors'):
+
+            PreprocessDetectorsToMD(InputWorkspace=event_name,
+                                    OutputWorkspace='detectors')
+
+            ExtractMonitors(InputWorkspace=event_name,
+                            DetectorWorkspace=event_name)
+
+            two_theta = mtd['detectors'].column('TwoTheta')
+            self.theta_max = 0.5*np.max(two_theta)
+
+        self.calculate_maximum_Q()
+
     def apply_mask(self, event_name, detector_mask):
         """
         Apply detector mask.
@@ -935,6 +936,38 @@ class LaueData(BaseDataModel):
             MaskDetectors(Workspace=event_name,
                           MaskedWorkspace='mask')
 
+    def create_grouping(self, filename, grouping):
+
+        grouping = '1x1' if grouping is None else grouping      
+
+        c, r = [int(val) for val in grouping.split('x')]
+
+        cols, rows = self.instrument_config['BankPixels']
+
+        det_id = np.array(mtd['detectors'].column(4)).reshape(-1,cols,rows)
+
+        grouped_ids = {}
+        for i in range(det_id.shape[0]):
+            for j in range(det_id.shape[1]):
+                for k in range(det_id.shape[2]):
+                    key = (i, j // c, k // r)
+                    detector_id = str(det_id[i,j,k])
+                    if key in grouped_ids:
+                        grouped_ids[key].append(detector_id)
+                    else:
+                        grouped_ids[key] = [detector_id]
+
+        header = '<?xml version="1.0" encoding="UTF-8" ?>\n'+\
+                 '<detector-grouping instrument="{}">\n'.format(self.ref_inst)        
+
+        with open(filename, 'wt+') as f:
+            f.write(header)
+            for det_group, ids in enumerate(grouped_ids.values()):
+                det_ids = ','.join(ids)
+                f.write('<group name="{}">'.format(det_group)+\
+                        '<detids val="{}"/> '.format(det_ids)+ '</group>\n')
+            f.write('</detector-grouping>')
+
     def convert_to_Q_sample(self, event_name, md_name, lorentz_corr=False):
         """
         Convert raw data to Q-sample.
@@ -950,6 +983,19 @@ class LaueData(BaseDataModel):
 
         """
 
+        if not mtd.doesExist('detectors'):
+
+            PreprocessDetectorsToMD(InputWorkspace=event_name,
+                                    OutputWorkspace='detectors')
+
+            ExtractMonitors(InputWorkspace=event_name,
+                            DetectorWorkspace=event_name)
+
+            two_theta = mtd['detectors'].column('TwoTheta')
+            self.theta_max = 0.5*np.max(two_theta)
+
+        self.calculate_maximum_Q()
+
         if mtd.doesExist(event_name):
 
             Q_min_vals, Q_max_vals = self.get_min_max_values()
@@ -961,8 +1007,6 @@ class LaueData(BaseDataModel):
                         LorentzCorrection=lorentz_corr,
                         MinValues=Q_min_vals,
                         MaxValues=Q_max_vals,
-                        SplitInto=5,
-                        MaxRecursionDepth=10,
                         OutputWorkspace=md_name)
 
     def load_generate_normalization(self, vanadium_file, spectrum_file):

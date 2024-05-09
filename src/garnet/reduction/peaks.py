@@ -12,6 +12,7 @@ from mantid.simpleapi import (FindPeaksMD,
                               CombinePeaksWorkspaces,
                               CreatePeaksWorkspace,
                               ConvertPeaksWorkspace,
+                              RenameWorkspace,
                               CopySample,
                               CloneWorkspace,
                               SaveNexus,
@@ -23,6 +24,10 @@ from mantid.simpleapi import (FindPeaksMD,
 
 from mantid.kernel import V3D
 from mantid.dataobjects import PeakShapeEllipsoid
+
+from mantid import config
+
+config['Q.convention'] = 'Crystallography'
 
 import numpy as np
 
@@ -144,7 +149,7 @@ class PeaksModel:
                                   peak_radius,
                                   background_inner_fact=1,
                                   background_outer_fact=1.5,
-                                  steps=51):
+                                  steps=101):
         """
         Integrate peak intensity with radius varying from zero to cut off.
 
@@ -161,7 +166,7 @@ class PeaksModel:
         background_outer_fact : float, optional
             Factor of peak radius for background shell. The default is 1.5.
         steps : int, optional
-            Number of integration steps. The default is 51.
+            Number of integration steps. The default is 101.
 
         Returns
         -------
@@ -417,7 +422,7 @@ class PeaksModel:
             Rs += [run.getGoniometer(i).getR() for i in range(n_gon)]
 
         return np.array(Rs)
-    
+
     def renumber_runs_by_index(self, ws, peaks):
         """
         Re-label the runs by index based on goniometer setting.
@@ -475,7 +480,7 @@ class PeaksModel:
 
         SaveNexus(Filename=filename,
                   InputWorkspace=peaks)
-    
+
     def convert_peaks(self, peaks):
         """
         Remove instrument from peaks.
@@ -486,9 +491,15 @@ class PeaksModel:
             Name of peaks table.
 
         """
-        
+
         ConvertPeaksWorkspace(PeakWorkspace=peaks,
-                              OutputWorkspace=peaks)
+                              OutputWorkspace='tmp_'+peaks)
+
+        for peak, pk in zip(mtd[peaks], mtd['tmp_'+peaks]):
+            pk.setPeakShape(peak.getPeakShape())
+
+        RenameWorkspace(InputWorkspace=peaks,
+                        OutputWorkspace='tmp_'+peaks)
 
     def combine_peaks(self, peaks, merge):
         """
@@ -599,9 +610,26 @@ class PeaksModel:
             Goniometer matrix.
 
         """
-        
+
         mtd[peaks].run().getGoniometer().setR(R)
 
+    def get_peaks_name(self, peaks):
+        """
+        Name of peaks.
+
+        Returns
+        -------
+        name : str
+            Readable name of peaks.
+
+        """
+
+        peak = mtd[peaks].getPeak(0)
+
+        run = peak.getRunNumber()
+
+        name = 'peaks_run#{}'
+        return name.format(run)
 
 class PeakModel:
 
@@ -676,7 +704,7 @@ class PeakModel:
         name = 'run#{}_d={:.4f}_({:.0f},{:.0f},{:.0f})_({:.0f},{:.0f},{:.0f})'
         return name.format(run,d,*hkl,*mnp)
 
-    def get_peak_shape(self, no):
+    def get_peak_shape(self, no, r_cut=np.inf):
         """
         Obtain the peak shape parameters.
 
@@ -698,19 +726,33 @@ class PeakModel:
 
         Q0, Q1, Q2 = mtd[self.peaks].getPeak(no).getQSampleFrame()
 
-        shape = eval(mtd[self.peaks].getPeak(no).getPeakShape().toJSON())
+        shape = mtd[self.peaks].getPeak(no).getPeakShape()
 
-        c0 = Q0+shape['translation0']
-        c1 = Q1+shape['translation1']
-        c2 = Q2+shape['translation2']
- 
-        v0 = [float(val) for val in shape['direction0'].split(' ')]
-        v1 = [float(val) for val in shape['direction1'].split(' ')]
-        v2 = [float(val) for val in shape['direction2'].split(' ')]
+        if shape.shapeName() == 'ellipsoid':
 
-        r0 = shape['radius0']
-        r1 = shape['radius1']
-        r2 = shape['radius2']
+            shape_dict = eval(shape.toJSON())
+
+            c0 = Q0+shape_dict['translation0']
+            c1 = Q1+shape_dict['translation1']
+            c2 = Q2+shape_dict['translation2']
+
+            v0 = [float(val) for val in shape_dict['direction0'].split(' ')]
+            v1 = [float(val) for val in shape_dict['direction1'].split(' ')]
+            v2 = [float(val) for val in shape_dict['direction2'].split(' ')]
+
+            r0 = shape_dict['radius0']
+            r1 = shape_dict['radius1']
+            r2 = shape_dict['radius2']
+
+            r0 = r0 if r0 < r_cut else r_cut
+            r1 = r1 if r1 < r_cut else r_cut
+            r2 = r2 if r2 < r_cut else r_cut
+
+        else:
+
+            c0, c1, c2 = Q0, Q1, Q2
+            r0 = r1 = r2 = r_cut
+            v0, v1, v2 = np.eye(3).tolist()
 
         return c0, c1, c2, r0, r1, r2, v0, v1, v2
 
@@ -756,11 +798,11 @@ class PeaksStatisticsModel(PeaksModel):
 
     def __init__(self, peaks):
 
-        super(PeaksModel, self).__init__(peaks)        
+        super(PeaksModel, self).__init__(peaks)
 
         self.peaks = peaks+'_stats'
 
-        CloneWorkspace(InputWorkspace=peaks, 
+        CloneWorkspace(InputWorkspace=peaks,
                        OutputWorkspace=self.peaks)
 
     def set_scale(self, scale='auto'):
@@ -776,4 +818,3 @@ class PeaksStatisticsModel(PeaksModel):
             peak.setIntensity(scale*peak.getIntensity())
             peak.setSigmaIntensity(scale*peak.getSigmaIntensity())
 
-    
