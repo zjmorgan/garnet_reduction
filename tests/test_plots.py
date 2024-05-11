@@ -33,7 +33,8 @@ def test_peak_plot():
 
     np.random.seed(13)
 
-    nx, ny, nz = 31, 31, 31
+    nx, ny, nz = 21, 24, 29
+    nx, ny, nz = 31, 31, 32
 
     Qx_min, Qx_max = 0, 2
     Qy_min, Qy_max = -1.9, 2.1
@@ -41,12 +42,12 @@ def test_peak_plot():
 
     Q0_x, Q0_y, Q0_z = 1.1, 0.1, -1.2
 
-    sigma_x, sigma_y, sigma_z = 0.2, 0.3, 0.4
+    sigma_x, sigma_y, sigma_z = 0.15, 0.25, 0.2
     rho_yz, rho_xz, rho_xy = 0.5, -0.1, -0.15
 
     a = 0.3
-    b = 0.5
-    c = 1.3
+    b = 1.4
+    c = 6.4
     d = 5.0
 
     sigma_yz = sigma_y*sigma_z
@@ -80,10 +81,10 @@ def test_peak_plot():
     data_norm *= c
     data_norm += b+a*(2*np.random.random(data_norm.shape)-1)
 
-    norm = np.full_like(data_norm, d)+Qx*0.0
+    norm = np.full_like(data_norm, d)
     data = data_norm*norm
 
-    mask = np.random.random(norm.shape) < 0.25
+    mask = np.random.random(norm.shape) < 0.05
     data[mask] = 0
     norm[mask] = 0
 
@@ -96,14 +97,16 @@ def test_peak_plot():
     params = ellipsoid.fit(Qx, Qy, Qz, data, norm)
 
     c, S, W, *fitting = ellipsoid.best_fit 
+
     vals = ellipsoid.interp_fit
+
+    #ellipsoid.integrate(Qx, Qy, Qz, data, norm, *params)
 
     intens, sig_noise = ellipsoid.intens_fit
 
-    ellipsoid.integrate(Qx, Qy, Qz, data, norm, *params)
-    bkg = ellipsoid.bkg
+    assert ellipsoid.volume_fraction(Qx, Qy, Qz, data, norm, *params) > 0.95
 
-    plot = PeakPlot(fitting, bkg)
+    plot = PeakPlot(fitting)
 
     plot.add_ellipsoid(c, S, W, vals)
     plot.add_peak_intensity(intens, sig_noise)

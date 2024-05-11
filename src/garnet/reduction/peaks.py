@@ -149,7 +149,8 @@ class PeaksModel:
                                   peak_radius,
                                   background_inner_fact=1,
                                   background_outer_fact=1.5,
-                                  steps=101):
+                                  steps=101,
+                                  fix=False):
         """
         Integrate peak intensity with radius varying from zero to cut off.
 
@@ -167,6 +168,8 @@ class PeaksModel:
             Factor of peak radius for background shell. The default is 1.5.
         steps : int, optional
             Number of integration steps. The default is 101.
+        fix : bool, optional
+            Fix the background shell size
 
         Returns
         -------
@@ -180,6 +183,12 @@ class PeaksModel:
 
         """
 
+        background_inner_rad = background_inner_fact*peak_radius if fix else 0
+        background_outer_rad = background_outer_fact*peak_radius if fix else 0
+
+        background_inner_fact = 0 if fix else background_inner_fact
+        background_outer_fact = 0 if fix else background_outer_fact
+
         PeakIntensityVsRadius(InputWorkspace=md,
                               PeaksWorkspace=peaks,
                               RadiusStart=0.0,
@@ -187,6 +196,8 @@ class PeaksModel:
                               NumSteps=steps,
                               BackgroundInnerFactor=background_inner_fact,
                               BackgroundOuterFactor=background_outer_fact,
+                              BackgroundInnerRadius=background_inner_rad,
+                              BackgroundOuterRadius=background_outer_rad,
                               OutputWorkspace=peaks+'_intens_vs_rad',
                               OutputWorkspace2=peaks+'_sig/noise_vs_rad')
 
@@ -701,8 +712,9 @@ class PeakModel:
         else:
             d = peak.getDSpacing()
 
-        name = 'run#{}_d={:.4f}_({:.0f},{:.0f},{:.0f})_({:.0f},{:.0f},{:.0f})'
-        return name.format(run,d,*hkl,*mnp)
+        name = 'peak_d={:.4f}_({:.0f},{:.0f},{:.0f})'+\
+                            '_({:.0f},{:.0f},{:.0f})_run#{}'
+        return name.format(d,*hkl,*mnp,run)
 
     def get_peak_shape(self, no, r_cut=np.inf):
         """
@@ -728,6 +740,8 @@ class PeakModel:
 
         shape = mtd[self.peaks].getPeak(no).getPeakShape()
 
+        c0, c1, c2 = Q0, Q1, Q2
+
         if shape.shapeName() == 'ellipsoid':
 
             shape_dict = eval(shape.toJSON())
@@ -750,7 +764,6 @@ class PeakModel:
 
         else:
 
-            c0, c1, c2 = Q0, Q1, Q2
             r0 = r1 = r2 = r_cut
             v0, v1, v2 = np.eye(3).tolist()
 

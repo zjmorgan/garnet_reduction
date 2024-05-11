@@ -120,7 +120,7 @@ class Integration:
             self.fit_peaks('peaks', r_cut)
 
             peaks.combine_peaks('peaks', 'combine')
-            
+
             diag_dir = os.path.dirname(diag_file)
 
             md_file = os.path.join(diag_dir, 'run#{}_data.nxs'.format(run))
@@ -320,9 +320,10 @@ class Integration:
 
         # peaks.remove_weak_peaks(peaks_ws)
 
-        # rad, sig_noise, intens = peaks.intensity_vs_radius(data_ws,
-        #                                                    peaks_ws,
-        #                                                    r_cut)
+        rad, sig_noise, intens = peaks.intensity_vs_radius(data_ws,
+                                                           peaks_ws,
+                                                           r_cut,
+                                                           fix=True)
 
         self.rad_intens = rad, intens
 
@@ -394,50 +395,87 @@ class Integration:
 
             params = peak.get_peak_shape(i, r_max)
 
-            bins, extents = self.bin_extent(*params)
+            peak.set_peak_intensity(i, 0, 0)
 
-            d, n, Q0, Q1, Q2 = data.normalize_to_Q_sample('md_data',
-                                                          extents,
-                                                          bins)
+            j = 0
 
-            ellipsoid = PeakEllipsoid(*params, r_cut/3, self.params['Radius'])
+            while j < 3 and params is not None:
 
-            params = ellipsoid.fit(Q0, Q1, Q2, d, n)
+                j += 1
+
+                bins, extents = self.bin_extent(*params)
+
+                d, n, Q0, Q1, Q2 = data.normalize_to_Q_sample('md_data',
+                                                              extents,
+                                                              bins)
+
+                ellipsoid = PeakEllipsoid(*params,
+                                          r_cut/3,
+                                          self.params['Radius'])
+
+                params = ellipsoid.fit(Q0, Q1, Q2, d, n)
+
+                if params is not None:
+
+                    dx = 2*self.roi(*params)
+
+                    if np.isclose(dx, 0).any():
+                        params = None
+                    elif np.all(np.abs(np.diff(extents, axis=1)/dx-1) < 0.05):
+                        j = np.inf
 
             if params is not None:
 
                 peak.set_peak_shape(i, *params)
 
-                int_intens, sig = ellipsoid.integrate(Q0,
+                c, S, W, *fitting = ellipsoid.best_fit
+
+                int_intens, sig_noise = ellipsoid.intens_fit
+
+                I = int_intens[-1]
+                sigma = I/sig_noise[-1] if sig_noise[-1] > 0 else np.inf
+
+                vol_fract = ellipsoid.volume_fraction(Q0,
                                                       Q1,
                                                       Q2,
                                                       d,
                                                       n,
                                                       *params)
 
-                c, S, W, *fitting = ellipsoid.best_fit
-                bkg = ellipsoid.bkg
+                if vol_fract > 0.5:
 
-                peak.set_peak_intensity(i, int_intens, sig)
+                    peak.set_peak_intensity(i, I, sigma)
 
-                plot = PeakPlot(fitting, bkg)
+                    plot = PeakPlot(fitting)
 
-                vals = ellipsoid.interp_fit
-                plot.add_ellipsoid(c, S, W, vals)
+                    vals = ellipsoid.interp_fit
+                    plot.add_ellipsoid(c, S, W, vals)
 
-                int_intens, sig_noise = ellipsoid.intens_fit
+                    plot.add_peak_intensity(int_intens, sig_noise)
 
-                plot.add_peak_intensity(int_intens, sig_noise)
+                    peak_name = peak.get_peak_name(i)
 
-                peak_name = peak.get_peak_name(i)
+                    peak_file = os.path.join(plot_path, peak_name+'.png')
 
-                plot.save_plot(os.path.join(plot_path, peak_name+'.png'))
+                    plot.save_plot(peak_file)
 
-            else:
+    def bin_extent(self, *params):
 
-                peak.set_peak_intensity(i, 0, 0)
+        c0, c1, c2, *_ = params
 
-    def bin_extent(self, c0, c1, c2, r0, r1, r2, v0, v1, v2):
+        dQ = self.roi(*params)
+
+        dQ0, dQ1, dQ2 = dQ
+
+        bins = np.array([31, 31, 31])
+
+        extents = np.array([[c0-dQ0, c0+dQ0],
+                            [c1-dQ1, c1+dQ1],
+                            [c2-dQ2, c2+dQ2]])
+
+        return bins, extents
+
+    def roi(self, c0, c1, c2, r0, r1, r2, v0, v1, v2):
         """
         Region extent and binning around a peak based on its initial shape.
 
@@ -449,8 +487,6 @@ class Integration:
             Peak radii.
         v0, v1, v2 : list
             Peak principal axes.
-        r_cut : float
-            Cutoff radius.
 
         Returns
         -------
@@ -468,14 +504,7 @@ class Integration:
 
         dQ = 2*np.sqrt(np.diag(S))
 
-        dQ0, dQ1, dQ2 = dQ
-
-        bins = [31, 31, 31]
-        extents = [[c0-dQ0, c0+dQ0],
-                   [c1-dQ1, c1+dQ1],
-                   [c2-dQ2, c2+dQ2]]
-
-        return bins, extents
+        return dQ
 
     @staticmethod
     def combine_parallel(plan, files):
@@ -532,11 +561,11 @@ class Integration:
 
         """
 
-        return os.path.join(self.plan['OutputPath'], 
-                            'integration/diagnostics', 
+        return os.path.join(self.plan['OutputPath'],
+                            'integration/diagnostics',
                             self.plan['OutputName']+'.nxs')
-    
-    
+
+
 class PeakSphere:
 
     def __init__(self, r_cut):
@@ -838,7 +867,7 @@ class PeakEllipsoid:
         return A*y+B
 
     def profile(self, Q, A, B, mu0, mu1, mu2,
-                      sigma0, sigma1, sigma2, 
+                      sigma0, sigma1, sigma2,
                       phi, theta, omega, integrate=False):
 
         c = np.array([mu0, mu1, mu2])
@@ -872,7 +901,7 @@ class PeakEllipsoid:
         return mu_u, mu_v, s0, s1, corr
 
     def generalized3d(self, Q0, Q1, Q2, mu0, mu1, mu2,
-                            sigma0, sigma1, sigma2, 
+                            sigma0, sigma1, sigma2,
                             phi, theta, omega, integrate):
 
         x0, x1, x2 = Q0-mu0, Q1-mu1, Q2-mu2
@@ -889,7 +918,7 @@ class PeakEllipsoid:
 
         return np.exp(-0.5*d**2)/scale
 
-    def generalized2d(self, Qu, Qv, mu_u, mu_v, 
+    def generalized2d(self, Qu, Qv, mu_u, mu_v,
                             sigma_u, sigma_v, rho, integrate):
 
         xu, xv = Qu-mu_u, Qv-mu_v
@@ -926,7 +955,7 @@ class PeakEllipsoid:
 
     def bin1d(self, x0, x1, x2, d, n):
 
-        x = [x0.ravel(), x1.ravel(), x2.ravel()]        
+        x = [x0.ravel(), x1.ravel(), x2.ravel()]
 
         Q = np.einsum('i,i...->...', self.n, x)
         Q_bins = np.histogram_bin_edges(Q, bins='auto')
@@ -934,19 +963,16 @@ class PeakEllipsoid:
         data_bins, _ = np.histogram(Q, bins=Q_bins, weights=d.ravel())
         norm_bins, _ = np.histogram(Q, bins=Q_bins, weights=n.ravel())
 
+        x = (Q_bins[:-1]+Q_bins[1:])*0.5
+
         y = data_bins/norm_bins
         e = np.sqrt(data_bins)/norm_bins
-
-        #low = np.isclose(data_bins, 0) & (norm_bins > 0)
-        #e[low] = 1/norm_bins[low]
-
-        x = (Q_bins[:-1]+Q_bins[1:])*0.5
 
         return x, y, e
 
     def bin2d(self, x0, x1, x2, d, n):
 
-        x = [x0.ravel(), x1.ravel(), x2.ravel()]        
+        x = [x0.ravel(), x1.ravel(), x2.ravel()]
 
         Qu = np.einsum('i,i...->...', self.u, x)
         Qv = np.einsum('i,i...->...', self.v, x)
@@ -959,16 +985,13 @@ class PeakEllipsoid:
         data_bins, _, _ = np.histogram2d(Qu, Qv, bins=bins, weights=d.ravel())
         norm_bins, _, _ = np.histogram2d(Qu, Qv, bins=bins, weights=n.ravel())
 
-        y = data_bins/norm_bins
-        e = np.sqrt(data_bins)/norm_bins
-
-        #low = np.isclose(data_bins, 0) & (norm_bins > 0)
-        #e[low] = 1/norm_bins[low]
-
         xu = (Qu_bins[:-1]+Qu_bins[1:])*0.5
         xv = (Qv_bins[:-1]+Qv_bins[1:])*0.5
 
         xu, xv = np.meshgrid(xu, xv, indexing='ij')
+
+        y = data_bins/norm_bins
+        e = np.sqrt(data_bins)/norm_bins
 
         return (xu, xv), y, e
 
@@ -980,9 +1003,12 @@ class PeakEllipsoid:
         self.params.add('A_2d', value=0, min=0, max=1, vary=False)
         self.params.add('A_3d', value=0, min=0, max=1, vary=False)
 
-        self.params.add('B_1d', value=0, min=0, max=1, vary=False)
-        self.params.add('B_2d', value=0, min=0, max=1, vary=False)
-        self.params.add('B_3d', value=0, min=0, max=1, vary=False)
+        self.params.add('B_1d', value=0, min=0, max=np.inf, vary=False)
+        self.params.add('B_2d', value=0, min=0, max=np.inf, vary=False)
+        self.params.add('B_3d', value=0, min=0, max=np.inf, vary=False)
+
+        # self.params['B_2d'].set(expr='B_1d')
+        # self.params['B_3d'].set(expr='B_1d')
 
         if mask.sum() > 31:
 
@@ -991,16 +1017,13 @@ class PeakEllipsoid:
             y = d/n
             e = np.sqrt(d)/n
 
-            #low = np.isclose(d, 0) & (n > 0)
-            #e[low] = 1/n[low]
-
             mask = np.isfinite(e) & np.isfinite(y) & (e > 0)
-            
+
             Q0, Q1, Q2, y, e = x0[mask], x1[mask], x2[mask], y[mask], e[mask]
             xye_3d = (Q0, Q1, Q2), y, e
             y_min = np.nanmin(y)
             y_max = np.nanmax(y)
-            
+
             if y_max <= y_min or np.isclose(y_max, 0):
                 y_max = 1
 
@@ -1041,8 +1064,8 @@ class PeakEllipsoid:
             self.params['B_2d'].set(value=y_min, min=0, max=y_max, vary=True)
 
             # self.params['B_1d'].set(value=0, min=0, max=np.inf, vary=True)
-            self.params['B_2d'].set(expr='B_1d')
-            self.params['B_3d'].set(expr='B_1d')
+            # self.params['B_2d'].set(expr='B_1d')
+            # self.params['B_3d'].set(expr='B_1d')
 
             out = Minimizer(self.residual,
                             self.params,
@@ -1070,8 +1093,8 @@ class PeakEllipsoid:
             self.params['A_3d'].set(value=1, min=0, max=np.inf, vary=False)
 
             self.params['B_1d'].set(vary=False)
-            # self.params['B_2d'].set(vary=False)
-            # self.params['B_3d'].set(vary=False)
+            self.params['B_2d'].set(vary=False)
+            self.params['B_3d'].set(vary=False)
 
             self.params['A_1d'].set(vary=True)
             # self.params['B_1d'].set(vary=True)
@@ -1086,12 +1109,10 @@ class PeakEllipsoid:
             self.params = result.params
 
             self.params['A_1d'].set(vary=False)
-            # self.params['B_1d'].set(vary=False)
 
             A_sig_1d = self.params['A_1d'].stderr
 
             self.params['A_2d'].set(vary=True)
-            # self.params['B_2d'].set(vary=True)
 
             out = Minimizer(self.residual_proj,
                             self.params,
@@ -1103,12 +1124,10 @@ class PeakEllipsoid:
             self.params = result.params
 
             self.params['A_2d'].set(vary=False)
-            # self.params['B_2d'].set(vary=False)
 
             A_sig_2d = self.params['A_2d'].stderr
 
             self.params['A_3d'].set(vary=True)
-            # self.params['B_3d'].set(vary=True)
 
             out = Minimizer(self.residual_func,
                             self.params,
@@ -1120,7 +1139,6 @@ class PeakEllipsoid:
             self.params = result.params
 
             self.params['A_3d'].set(vary=False)
-            # self.params['B_3d'].set(vary=False)
 
             A_sig_3d = self.params['A_3d'].stderr
 
@@ -1151,8 +1169,8 @@ class PeakEllipsoid:
             if A_3d <= 3*A_sig_3d:
                 return None
 
-            I = np.array([A_1d, A_2d, A_3d, 0]) 
-            sig = np.array([A_sig_1d, A_sig_2d, A_sig_3d, np.inf])
+            I = np.array([A_1d, A_2d, A_3d])
+            sig = np.array([A_sig_1d, A_sig_2d, A_sig_3d])
 
             self.intens_fit = I, I/sig
 
@@ -1215,9 +1233,7 @@ class PeakEllipsoid:
 
             return c0, c1, c2, r0, r1, r2, v0, v1, v2
 
-    def integrate(self, x0, x1, x2, d, n, c0, c1, c2, r0, r1, r2, v0, v1, v2):
-
-        d3x = self.voxel_volume(x0, x1, x2)
+    def envelope(self, x0, x1, x2, d, n, c0, c1, c2, r0, r1, r2, v0, v1, v2):
 
         W = np.column_stack([v0, v1, v2])
         V = np.diag([1/r0**2, 1/r1**2, 1/r2**2])
@@ -1229,13 +1245,27 @@ class PeakEllipsoid:
         dist = np.einsum('iklm,iklm->klm',
                          np.einsum('ij,jklm->iklm', A, dx), dx)
 
-        pk = dist < 1
+        return dist < 1
+
+    def volume_fraction(self, x0, x1, x2, d, n, *params):
+
+        pk = self.envelope(x0, x1, x2, d, n, *params)
+
+        y = d[pk]/n[pk]
+
+        return np.sum(np.isfinite(y))/y.size
+
+    def integrate(self, x0, x1, x2, d, n, *params):
+
+        d3x = self.voxel_volume(x0, x1, x2)
+
+        pk = self.envelope(x0, x1, x2, d, n, *params)
 
         struct = scipy.ndimage.generate_binary_structure(3, 1)
         dilate = scipy.ndimage.binary_dilation(pk, struct, border_value=0)
 
         bkg = (dilate ^ pk) & (n > 0)
-        pk = (dist < 1) & (n > 0)
+        pk = pk & (n > 0)
 
         y = d[bkg]/n[bkg]
         e = np.sqrt(d[bkg])/n[bkg]
@@ -1256,9 +1286,9 @@ class PeakEllipsoid:
 
         I, I_sig = self.intens_fit
 
-        I[-1] = intens
-        if sig > 0:
-            I_sig[-1] = intens/sig
+        # I[-1] = intens
+        # if sig > 0:
+        #     I_sig[-1] = intens/sig
 
         self.intens_fit = I, I_sig
 

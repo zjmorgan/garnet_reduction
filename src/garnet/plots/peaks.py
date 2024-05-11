@@ -54,7 +54,7 @@ class RadiusPlot(BasePlot):
 
 class PeakPlot(BasePlot):
 
-    def __init__(self, fitting, bkg):
+    def __init__(self, fitting):
 
         super(PeakPlot, self).__init__()
 
@@ -99,7 +99,7 @@ class PeakPlot(BasePlot):
 
         self.add_profile_fit(xye_1d, y_1d_fit)
         self.add_projection_fit(xye_2d, y_2d_fit)
-        self.add_ellipsoid_fit(xye_3d, y_3d_fit, bkg)
+        self.add_ellipsoid_fit(xye_3d, y_3d_fit)
 
     def _color_limits(self, y1, y2):
         """
@@ -127,7 +127,7 @@ class PeakPlot(BasePlot):
 
         return vmin, vmax
 
-    def add_ellipsoid_fit(self, xye, y_fit, bkg):
+    def add_ellipsoid_fit(self, xye, y_fit):
         """
         Three-dimensional ellipsoids.
 
@@ -144,8 +144,8 @@ class PeakPlot(BasePlot):
 
         x0, x1, x2 = axes
 
-        mask = np.isfinite(y) & (y > 0)
-        y_fit[~mask] = np.nan
+        y[np.isinf(y)] = np.nan
+        y_fit[np.isnan(y)] = np.nan
 
         y0 = np.nansum(y, axis=0)
         y1 = np.nansum(y, axis=1)
@@ -155,9 +155,9 @@ class PeakPlot(BasePlot):
         y1_fit = np.nansum(y_fit, axis=1)
         y2_fit = np.nansum(y_fit, axis=2)
 
-        bkg0 = bkg[bkg.shape[0]//2,:,:]*1.0
-        bkg1 = bkg[:,bkg.shape[1]//2,:]*1.0
-        bkg2 = bkg[:,:,bkg.shape[2]//2]*1.0
+        # bkg0 = bkg[bkg.shape[0]//2,:,:]*1.0
+        # bkg1 = bkg[:,bkg.shape[1]//2,:]*1.0
+        # bkg2 = bkg[:,:,bkg.shape[2]//2]*1.0
 
         self.ellip = []
 
@@ -176,7 +176,7 @@ class PeakPlot(BasePlot):
                       vmax=vmax,
                       shading='nearest')
 
-        ax.contour(x0[:,0,0], x1[0,:,0], bkg2.T, levels=[0.5], zorder=1)
+        # ax.contour(x0[:,0,0], x1[0,:,0], bkg2.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -194,7 +194,7 @@ class PeakPlot(BasePlot):
                       vmax=vmax,
                       shading='nearest')
 
-        ax.contour(x0[:,0,0], x1[0,:,0], bkg2.T, levels=[0.5], zorder=1)
+        # ax.contour(x0[:,0,0], x1[0,:,0], bkg2.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -214,7 +214,7 @@ class PeakPlot(BasePlot):
                       vmax=vmax,
                       shading='nearest')
 
-        ax.contour(x0[:,0,0], x2[0,0,:], bkg1.T, levels=[0.5], zorder=1)
+        # ax.contour(x0[:,0,0], x2[0,0,:], bkg1.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -232,7 +232,7 @@ class PeakPlot(BasePlot):
                       vmax=vmax,
                       shading='nearest')
 
-        ax.contour(x0[:,0,0], x2[0,0,:], bkg1.T, levels=[0.5], zorder=1)
+        # ax.contour(x0[:,0,0], x2[0,0,:], bkg1.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -253,7 +253,7 @@ class PeakPlot(BasePlot):
                       shading='nearest',
                       zorder=0)
 
-        ax.contour(x1[0,:,0], x2[0,0,:], bkg0.T, levels=[0.5], zorder=1)
+        # ax.contour(x1[0,:,0], x2[0,0,:], bkg0.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -272,7 +272,7 @@ class PeakPlot(BasePlot):
                       vmax=vmax,
                       shading='nearest')
 
-        ax.contour(x1[0,:,0], x2[0,0,:], bkg0.T, levels=[0.5], zorder=1)
+        # ax.contour(x1[0,:,0], x2[0,0,:], bkg0.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -485,8 +485,26 @@ class PeakPlot(BasePlot):
             ax.add_patch(peak)
 
     def _sci_notation(self, x):
-        exp = int(np.floor(np.log10(abs(x))))
-        return '{:.2f}\\times 10^{{{}}}'.format(x / 10**exp, exp)
+        """
+        Represent float in scientific notation using LaTeX.
+
+        Parameters
+        ----------
+        x : float
+            Value to convert.
+
+        Returns
+        -------
+        s : str
+            String representation in LaTeX.
+
+        """
+
+        if np.isfinite(x):
+            exp = int(np.floor(np.log10(abs(x))))
+            return '{:.2f}\\times 10^{{{}}}'.format(x / 10**exp, exp)
+        else:
+            return '\\infty'
 
     def add_peak_intensity(self, intens, sig_noise):
 
@@ -500,12 +518,5 @@ class PeakPlot(BasePlot):
         self.proj[0].set_title(I.format(self._sci_notation(intens[1])))
         self.proj[1].set_title(I_sig.format(sig_noise[1]))
 
-        I = r'$I={}$'
-
         self.ellip[0].set_title(I.format(self._sci_notation(intens[2])))
         self.ellip[1].set_title(I_sig.format(sig_noise[2]))
-
-        self.ellip[2].set_title(I.format(self._sci_notation(intens[3])))
-        self.ellip[3].set_title(I_sig.format(sig_noise[3]))
-
-        self.ellip[4].set_title('[arb. unit]')
