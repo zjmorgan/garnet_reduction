@@ -280,6 +280,11 @@ class PeakPlot(BasePlot):
         ax.yaxis.set_ticklabels([])
         # ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
 
+        norm = Normalize(vmin, vmax)
+        im = ScalarMappable(norm=norm)
+        cb = self.fig.colorbar(im, ax=[self.ellip[-2], self.ellip[-1]])
+        cb.ax.minorticks_on()
+
         self.gs = gs
 
     def add_projection_fit(self, xye, y_fit):
@@ -507,6 +512,17 @@ class PeakPlot(BasePlot):
             return '\\infty'
 
     def add_peak_intensity(self, intens, sig_noise):
+        """
+        Add integrated intensities.
+
+        Parameters
+        ----------
+        intens : list
+            Intensity.
+        sig_noise : list
+            Signal-to-noise ratio.
+
+        """
 
         I = r'$I={}$ [arb. unit]'
         I_sig = '$I/\sigma={:.1f}$'
@@ -520,3 +536,25 @@ class PeakPlot(BasePlot):
 
         self.ellip[0].set_title(I.format(self._sci_notation(intens[2])))
         self.ellip[1].set_title(I_sig.format(sig_noise[2]))
+
+    def add_peak_info(self, wavelength, angles, gon):
+        """
+        Add peak information.
+
+        Parameters
+        ----------
+        wavelength : float
+            Wavelength.
+        angles : list
+            Scattering and azimuthal angles.
+        gon : list
+            Goniometer Euler angles.
+
+        """
+
+        ellip = self.ellip
+
+        ellip[2].set_title(r'$\lambda={:.4f}$ [$\AA$]'.format(wavelength))
+        ellip[3].set_title(r'$({:.1f},{:.1f},{:.1f})^\circ$'.format(*gon))
+        ellip[4].set_title(r'$2\theta={:.2f}^\circ$'.format(angles[0]))
+        ellip[5].set_title(r'$\phi={:.2f}^\circ$'.format(angles[1]))

@@ -679,6 +679,75 @@ class PeakModel:
         mtd[self.peaks].getPeak(no).setIntensity(intens)
         mtd[self.peaks].getPeak(no).setSigmaIntensity(sig)
 
+    def get_wavelength(self, no):
+        """
+        Wavelength of the peak.
+
+        Parameters
+        ----------
+        no : int
+            Peak index number.
+
+        Returns
+        -------
+        lamda : float
+            Wavelength in angstroms.
+
+        """
+
+        peak = mtd[self.peaks].getPeak(no)
+
+        return peak.getWavelength()
+
+    def get_angles(self, no):
+        """
+        Scattering and azimuthal angle of the peak.
+
+        Parameters
+        ----------
+        no : int
+            Peak index number.
+
+        Returns
+        -------
+        two_theta : float
+            Scattering (polar) angle in degrees.
+        az_phi : TYPE
+            Azimuthal angle in degrees.
+
+        """
+
+        peak = mtd[self.peaks].getPeak(no)
+
+        two_theta = np.rad2deg(peak.getScattering())
+        az_phi = np.rad2deg(peak.getAzimuthal())
+
+        return two_theta, az_phi
+
+    def get_goniometer_angles(self, no):
+        """
+        Goniometer Euler angles of the peak.
+
+        Parameters
+        ----------
+        no : int
+            Peak index number.
+
+        Returns
+        -------
+        angles : list
+            Euler angles (YZY convention) in degrees.
+
+        """
+
+        peak = mtd[self.peaks].getPeak(no)
+        gon = mtd[self.peaks].run().getGoniometer()
+
+        R = peak.getGoniometerMatrix()
+        gon.setR(R)
+
+        return list(gon.getEulerAngles())
+
     def get_peak_name(self, no):
         """
         Name of peak.

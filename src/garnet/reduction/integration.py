@@ -7,6 +7,8 @@ config['Q.convention'] = 'Crystallography'
 import numpy as np
 
 import scipy.special
+import scipy.integrate
+import scipy.interpolate
 import scipy.spatial.transform
 
 from lmfit import Minimizer, Parameters
@@ -397,9 +399,9 @@ class Integration:
 
             peak.set_peak_intensity(i, 0, 0)
 
-            j = 0
+            j, max_iter = 0, 3
 
-            while j < 3 and params is not None:
+            while j < max_iter and params is not None:
 
                 j += 1
 
@@ -421,19 +423,14 @@ class Integration:
 
                     if np.isclose(dx, 0).any():
                         params = None
-                    elif np.all(np.abs(np.diff(extents, axis=1)/dx-1) < 0.05):
-                        j = np.inf
+                    elif np.all(np.abs(np.diff(extents, axis=1)/dx-1) < 0.15):
+                        j = max_iter
 
             if params is not None:
 
                 peak.set_peak_shape(i, *params)
 
                 c, S, W, *fitting = ellipsoid.best_fit
-
-                int_intens, sig_noise = ellipsoid.intens_fit
-
-                I = int_intens[-1]
-                sigma = I/sig_noise[-1] if sig_noise[-1] > 0 else np.inf
 
                 vol_fract = ellipsoid.volume_fraction(Q0,
                                                       Q1,
@@ -442,7 +439,14 @@ class Integration:
                                                       n,
                                                       *params)
 
-                if vol_fract > 0.5:
+                if vol_fract > 0.85:
+
+                    ellipsoid.integrate(Q0, Q1, Q2, d, n, *params)
+
+                    int_intens, sig_noise = ellipsoid.intens_fit
+
+                    I = int_intens[-1]
+                    sigma = I/sig_noise[-1] if sig_noise[-1] > 0 else np.inf
 
                     peak.set_peak_intensity(i, I, sigma)
 
@@ -452,6 +456,12 @@ class Integration:
                     plot.add_ellipsoid(c, S, W, vals)
 
                     plot.add_peak_intensity(int_intens, sig_noise)
+
+                    wavelength = peak.get_wavelength(i)
+                    angles = peak.get_angles(i)
+                    goniometer = peak.get_goniometer_angles(i)
+
+                    plot.add_peak_info(wavelength, angles, goniometer)
 
                     peak_name = peak.get_peak_name(i)
 
@@ -467,7 +477,7 @@ class Integration:
 
         dQ0, dQ1, dQ2 = dQ
 
-        bins = np.array([31, 31, 31])
+        bins = np.array([21, 21, 21])
 
         extents = np.array([[c0-dQ0, c0+dQ0],
                             [c1-dQ1, c1+dQ1],
@@ -1007,8 +1017,8 @@ class PeakEllipsoid:
         self.params.add('B_2d', value=0, min=0, max=np.inf, vary=False)
         self.params.add('B_3d', value=0, min=0, max=np.inf, vary=False)
 
-        # self.params['B_2d'].set(expr='B_1d')
-        # self.params['B_3d'].set(expr='B_1d')
+        self.params['B_2d'].set(expr='B_1d')
+        self.params['B_3d'].set(expr='B_1d')
 
         if mask.sum() > 31:
 
@@ -1028,7 +1038,7 @@ class PeakEllipsoid:
                 y_max = 1
 
             self.params['A_3d'].set(value=y_max, min=0, max=5*y_max, vary=True)
-            self.params['B_3d'].set(value=y_min, min=0, max=y_max, vary=True)
+            # self.params['B_3d'].set(value=y_min, min=0, max=y_max, vary=True)
 
             xye_1d = self.bin1d(x0, x1, x2, d, n)
             xye_2d = self.bin2d(x0, x1, x2, d, n)
@@ -1061,7 +1071,7 @@ class PeakEllipsoid:
                 y_max = 1
 
             self.params['A_2d'].set(value=y_max, min=0, max=5*y_max, vary=True)
-            self.params['B_2d'].set(value=y_min, min=0, max=y_max, vary=True)
+            # self.params['B_2d'].set(value=y_min, min=0, max=y_max, vary=True)
 
             # self.params['B_1d'].set(value=0, min=0, max=np.inf, vary=True)
             # self.params['B_2d'].set(expr='B_1d')
@@ -1099,6 +1109,10 @@ class PeakEllipsoid:
             self.params['A_1d'].set(vary=True)
             # self.params['B_1d'].set(vary=True)
 
+            B_err = self.params['B_1d'].stderr
+            if B_err is None:
+                B_err = 0
+    
             out = Minimizer(self.residual_prof,
                             self.params,
                             fcn_args=(xye_1d, True),
@@ -1226,6 +1240,7 @@ class PeakEllipsoid:
             x = A_1d, B_1d, A_2d, B_2d, A_3d, B_3d
 
             self.interp_fit = mu, mu_u, mu_v, sigma, sigma_u, sigma_v, rho, *x
+            self.err = B_err
 
             U = self.U_matrix(phi, theta, omega)
 
@@ -1257,8 +1272,6 @@ class PeakEllipsoid:
 
     def integrate(self, x0, x1, x2, d, n, *params):
 
-        d3x = self.voxel_volume(x0, x1, x2)
-
         pk = self.envelope(x0, x1, x2, d, n, *params)
 
         struct = scipy.ndimage.generate_binary_structure(3, 1)
@@ -1276,19 +1289,52 @@ class PeakEllipsoid:
         B = np.sum(y[mask]*w[mask])/np.sum(w[mask])
         B_err = np.sqrt(1/np.sum(w[mask]))
 
-        y = d[pk]/n[pk]
-        e = np.sqrt(d[pk])/n[pk]
+        y = d/n
+        e = np.sqrt(d)/n
 
-        intens = np.nansum(y-B)*d3x
-        sig = np.sqrt(np.nansum(e**2+B_err**2))*d3x
+        mask = np.isfinite(y) & np.isfinite(e)
+
+        points = np.array((x0[mask], x1[mask], x2[mask])).T
+
+        y = scipy.interpolate.griddata(points,
+                                       y[mask]-B,
+                                       (x0, x1, x2),
+                                       fill_value=B,
+                                       method='linear')
+
+        e2 = scipy.interpolate.griddata(points,
+                                        e[mask]**2+B_err**2,
+                                        (x0, x1, x2),
+                                        fill_value=B_err**2,
+                                        method='linear')
+
+        y[~pk] = 0
+        e2[~pk] = 0
+
+        x0, x1, x2 = x0[:,0,0], x1[0,:,0], x2[0,0,:]
+
+        intens = scipy.integrate.simps(\
+                 scipy.integrate.simps(\
+                 scipy.integrate.simps(y, x2), x1), x0)
+
+        sig = np.sqrt(scipy.integrate.simps(\
+                      scipy.integrate.simps(\
+                      scipy.integrate.simps(e2, x2**2), x1**2), x0**2))
+
+        # B0 = self.interp_fit[-1]
+        # B0_err = self.err
+
+        # intens = np.nansum(y-B)*d3x
+        # sig = np.sqrt(np.nansum(e**2+B_err**2))*d3x
 
         self.bkg = bkg
 
         I, I_sig = self.intens_fit
 
-        # I[-1] = intens
-        # if sig > 0:
-        #     I_sig[-1] = intens/sig
+        sig = np.sqrt(sig**2+(I[-1]/I_sig[-1])**2)
+
+        if np.abs(intens-I[-1]) > 5*sig:
+            I_sig[-1] = 1
 
         self.intens_fit = I, I_sig
 

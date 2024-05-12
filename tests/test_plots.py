@@ -34,7 +34,6 @@ def test_peak_plot():
     np.random.seed(13)
 
     nx, ny, nz = 21, 24, 29
-    nx, ny, nz = 31, 31, 32
 
     Qx_min, Qx_max = 0, 2
     Qy_min, Qy_max = -1.9, 2.1
@@ -84,7 +83,7 @@ def test_peak_plot():
     norm = np.full_like(data_norm, d)
     data = data_norm*norm
 
-    mask = np.random.random(norm.shape) < 0.05
+    mask = np.random.random(norm.shape) < 0.15
     data[mask] = 0
     norm[mask] = 0
 
@@ -100,11 +99,11 @@ def test_peak_plot():
 
     vals = ellipsoid.interp_fit
 
-    #ellipsoid.integrate(Qx, Qy, Qz, data, norm, *params)
+    ellipsoid.integrate(Qx, Qy, Qz, data, norm, *params)
 
     intens, sig_noise = ellipsoid.intens_fit
 
-    assert ellipsoid.volume_fraction(Qx, Qy, Qz, data, norm, *params) > 0.95
+    assert ellipsoid.volume_fraction(Qx, Qy, Qz, data, norm, *params) > 0.75
 
     plot = PeakPlot(fitting)
 

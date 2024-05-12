@@ -1,2 +1,3 @@
-# garnet_reduction
-Single crystal reduction workflows
+# ![](https://github.com/zjmorgan/NeuXtalViz/blob/main/garnet.svg)
+
+
