@@ -748,6 +748,23 @@ class PeakModel:
 
         return list(gon.getEulerAngles())
 
+    def set_background(self, no, bkg):
+        """
+        Add the background level.
+
+        Parameters
+        ----------
+        no : int
+            Peak index number.
+        bkg : float
+            Background level.
+
+        """
+
+        peak = mtd[self.peaks].getPeak(no)
+
+        peak.setBinCount(bkg)
+
     def get_peak_name(self, no):
         """
         Name of peak.

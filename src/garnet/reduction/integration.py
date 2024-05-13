@@ -423,7 +423,7 @@ class Integration:
 
                     if np.isclose(dx, 0).any():
                         params = None
-                    elif np.all(np.abs(np.diff(extents, axis=1)/dx-1) < 0.15):
+                    elif np.all(np.abs(np.diff(extents, axis=1)/dx-1) < 0.25):
                         j = max_iter
 
             if params is not None:
@@ -449,6 +449,7 @@ class Integration:
                     sigma = I/sig_noise[-1] if sig_noise[-1] > 0 else np.inf
 
                     peak.set_peak_intensity(i, I, sigma)
+                    peak.set_background(i, ellipsoid.bkg)
 
                     plot = PeakPlot(fitting)
 
@@ -1321,19 +1322,19 @@ class PeakEllipsoid:
                       scipy.integrate.simps(\
                       scipy.integrate.simps(e2, x2**2), x1**2), x0**2))
 
-        # B0 = self.interp_fit[-1]
-        # B0_err = self.err
+        B0 = self.interp_fit[-1]
+        B_err = np.sqrt(self.err**2+B_err**2)
 
         # intens = np.nansum(y-B)*d3x
         # sig = np.sqrt(np.nansum(e**2+B_err**2))*d3x
 
-        self.bkg = bkg
+        self.bkg = B0
 
         I, I_sig = self.intens_fit
 
         sig = np.sqrt(sig**2+(I[-1]/I_sig[-1])**2)
 
-        if np.abs(intens-I[-1]) > 5*sig:
+        if np.abs(intens-I[-1]) > 5*sig or np.abs(B-B0) > 5*B_err:
             I_sig[-1] = 1
 
         self.intens_fit = I, I_sig
