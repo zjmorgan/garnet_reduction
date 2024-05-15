@@ -83,9 +83,32 @@ def test_peak_plot():
     norm = np.full_like(data_norm, d)
     data = data_norm*norm
 
-    mask = np.random.random(norm.shape) < 0.15
-    data[mask] = 0
+    m = 1
+
+    i, j, k = np.array(np.meshgrid(np.arange(nx),
+                                   np.arange(ny),
+                                   np.arange(nz), indexing='ij')).reshape(3,-1)
+
+    i_min = np.clip(i-m, 0, nx)
+    i_max = np.clip(i+m+1, 0, nx)
+    j_min = np.clip(j-m, 0, ny)
+    j_max = np.clip(j+m+1, 0, ny)
+    k_min = np.clip(k-m, 0, nz)
+    k_max = np.clip(k+m+1, 0, nz)
+
+    n = nx*ny*nz
+
+    ic = np.random.randint(i_min, i_max, size=n).ravel()
+    jc = np.random.randint(j_min, j_max, size=n).ravel()
+    kc = np.random.randint(k_min, k_max, size=n).ravel()
+
+    temp = np.copy(data)
+    data[i,j,k] = data[ic,jc,kc]
+    data[ic,jc,kc] = temp[i,j,k]
+
+    mask = np.random.random(norm.shape) < 0.05
     norm[mask] = 0
+    data[mask] = 0
 
     Qx, Qy, Qz = np.meshgrid(Qx, Qy, Qz, indexing='ij')
 
@@ -95,7 +118,7 @@ def test_peak_plot():
 
     params = ellipsoid.fit(Qx, Qy, Qz, data, norm)
 
-    c, S, W, *fitting = ellipsoid.best_fit 
+    c, S, W, *fitting = ellipsoid.best_fit
 
     vals = ellipsoid.interp_fit
 

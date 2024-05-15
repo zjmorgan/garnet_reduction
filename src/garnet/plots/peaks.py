@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import matplotlib.style as mplstyle
+mplstyle.use('fast')
+
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from matplotlib.patches import Ellipse
@@ -64,16 +67,10 @@ class PeakPlot(BasePlot):
 
         self.fig = plt.figure(figsize=(14.4, 4.8), layout='constrained')
 
-        # (xu, xv), _, _ = xye_2d
-
-        # ru = xu[-1,0]-xu[0,0]
-        # rv = xv[0,-1]-xv[0,0]
-
         (x0, x1, x2), _, _ = xye_3d
 
         r0 = x0[-1,0,0]-x0[0,0,0]
         r1 = x1[0,-1,0]-x1[0,0,0]
-        # r2 = x1[0,0,-1]-x1[0,0,0]
 
         sp = GridSpec(1, 3, figure=self.fig, width_ratios=[1,0.75,1.25])
 
@@ -155,10 +152,6 @@ class PeakPlot(BasePlot):
         y1_fit = np.nansum(y_fit, axis=1)
         y2_fit = np.nansum(y_fit, axis=2)
 
-        # bkg0 = bkg[bkg.shape[0]//2,:,:]*1.0
-        # bkg1 = bkg[:,bkg.shape[1]//2,:]*1.0
-        # bkg2 = bkg[:,:,bkg.shape[2]//2]*1.0
-
         self.ellip = []
 
         gs = self.gs[2]
@@ -176,8 +169,6 @@ class PeakPlot(BasePlot):
                       vmax=vmax,
                       shading='nearest')
 
-        # ax.contour(x0[:,0,0], x1[0,:,0], bkg2.T, levels=[0.5], zorder=1)
-
         ax.minorticks_on()
         ax.set_aspect(1)
         ax.xaxis.set_ticklabels([])
@@ -193,8 +184,6 @@ class PeakPlot(BasePlot):
                       vmin=vmin,
                       vmax=vmax,
                       shading='nearest')
-
-        # ax.contour(x0[:,0,0], x1[0,:,0], bkg2.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -214,8 +203,6 @@ class PeakPlot(BasePlot):
                       vmax=vmax,
                       shading='nearest')
 
-        # ax.contour(x0[:,0,0], x2[0,0,:], bkg1.T, levels=[0.5], zorder=1)
-
         ax.minorticks_on()
         ax.set_aspect(1)
         ax.xaxis.set_ticklabels([])
@@ -231,8 +218,6 @@ class PeakPlot(BasePlot):
                       vmin=vmin,
                       vmax=vmax,
                       shading='nearest')
-
-        # ax.contour(x0[:,0,0], x2[0,0,:], bkg1.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -253,8 +238,6 @@ class PeakPlot(BasePlot):
                       shading='nearest',
                       zorder=0)
 
-        # ax.contour(x1[0,:,0], x2[0,0,:], bkg0.T, levels=[0.5], zorder=1)
-
         ax.minorticks_on()
         ax.set_aspect(1)
         ax.xaxis.set_ticklabels([])
@@ -271,8 +254,6 @@ class PeakPlot(BasePlot):
                       vmin=vmin,
                       vmax=vmax,
                       shading='nearest')
-
-        # ax.contour(x1[0,:,0], x2[0,0,:], bkg0.T, levels=[0.5], zorder=1)
 
         ax.minorticks_on()
         ax.set_aspect(1)

@@ -399,7 +399,7 @@ class Integration:
 
             peak.set_peak_intensity(i, 0, 0)
 
-            j, max_iter = 0, 3
+            j, max_iter = 0, 2
 
             while j < max_iter and params is not None:
 
@@ -449,7 +449,7 @@ class Integration:
                     sigma = I/sig_noise[-1] if sig_noise[-1] > 0 else np.inf
 
                     peak.set_peak_intensity(i, I, sigma)
-                    peak.set_background(i, ellipsoid.bkg)
+                    peak.set_background(i, *ellipsoid.bkg)
 
                     plot = PeakPlot(fitting)
 
@@ -750,20 +750,16 @@ class PeakEllipsoid:
 
         return U
 
-    def residual(self, params, xye_1d, xye_2d, xye_3d, integrate=False):
+    def centroid_covariance(self, c0, c1, c2, r0, r1, r2, phi, theta, omega):
 
-        diff = np.concatenate([self.residual_prof(params, xye_1d, integrate),
-                               self.residual_proj(params, xye_2d, integrate),
-                               self.residual_func(params, xye_3d, integrate)])
+        sigma0, sigma1, sigma2 = self.scale(r0, r1, r2)
 
-        return diff
+        c = np.array([c0, c1, c2])
+        S = self.S_matrix(sigma0, sigma1, sigma2, phi, theta, omega)
 
-    def residual_prof(self, params, xye, integrate=False):
+        return c, S
 
-        Q, y, e = xye
-
-        A = params['A_1d'].value
-        B = params['B_1d'].value
+    def residual(self, params, xye_1d, xye_2d, xye_3d):
 
         c0 = params['c0']
         c1 = params['c1']
@@ -777,10 +773,26 @@ class PeakEllipsoid:
         theta = params['theta']
         omega = params['omega']
 
-        sigma0, sigma1, sigma2 = self.scale(r0, r1, r2)
+        c, S = self.centroid_covariance(c0, c1, c2,
+                                        r0, r1, r2,
+                                        phi, theta, omega)
 
-        args = Q, A, B, c0, c1, c2, \
-               sigma0, sigma1, sigma2, phi, theta, omega, integrate
+        res = [self.residual_prof(params, c, S, xye_1d),
+               self.residual_proj(params, c, S, xye_2d),
+               self.residual_func(params, c, S, xye_3d)]
+
+        diff = np.concatenate(res)
+
+        return diff
+
+    def residual_prof(self, params, c, S, xye, integrate=False):
+
+        Q, y, e = xye
+
+        A = params['A_1d'].value
+        B = params['B_1d'].value
+
+        args = Q, A, B, c, S, integrate
 
         y_fit = self.profile(*args)
 
@@ -790,29 +802,14 @@ class PeakEllipsoid:
 
         return diff
 
-    def residual_proj(self, params, xye, integrate=False):
+    def residual_proj(self, params, c, S, xye, integrate=False):
 
         (Qu, Qv), y, e = xye
 
         A = params['A_2d'].value
         B = params['B_2d'].value
 
-        c0 = params['c0']
-        c1 = params['c1']
-        c2 = params['c2']
-
-        r0 = params['r0']
-        r1 = params['r1']
-        r2 = params['r2']
-
-        phi = params['phi']
-        theta = params['theta']
-        omega = params['omega']
-
-        sigma0, sigma1, sigma2 = self.scale(r0, r1, r2)
-
-        args = Qu, Qv, A, B, c0, c1, c2, \
-               sigma0, sigma1, sigma2, phi, theta, omega, integrate
+        args = Qu, Qv, A, B, c, S, integrate
 
         y_fit = self.projection(*args)
 
@@ -822,29 +819,14 @@ class PeakEllipsoid:
 
         return diff
 
-    def residual_func(self, params, xye, integrate=False):
+    def residual_func(self, params, c, S, xye, integrate=False):
 
         (Q0, Q1, Q2), y, e = xye
 
         A = params['A_3d'].value
         B = params['B_3d'].value
 
-        c0 = params['c0']
-        c1 = params['c1']
-        c2 = params['c2']
-
-        r0 = params['r0']
-        r1 = params['r1']
-        r2 = params['r2']
-
-        phi = params['phi']
-        theta = params['theta']
-        omega = params['omega']
-
-        sigma0, sigma1, sigma2 = self.scale(r0, r1, r2)
-
-        args = Q0, Q1, Q2, A, B, c0, c1, c2, \
-               sigma0, sigma1, sigma2, phi, theta, omega, integrate
+        args = Q0, Q1, Q2, A, B, c, S, integrate
 
         y_fit = self.func(*args)
 
@@ -854,21 +836,13 @@ class PeakEllipsoid:
 
         return diff
 
-    def func(self, Q0, Q1, Q2, A, B, mu0, mu1, mu2,
-                   sigma0, sigma1, sigma2, phi, theta, omega, integrate=False):
+    def func(self, Q0, Q1, Q2, A, B, c, S, integrate=False):
 
-        y = self.generalized3d(Q0, Q1, Q2, mu0, mu1, mu2,
-                               sigma0, sigma1, sigma2,
-                               phi, theta, omega, integrate)
+        y = self.generalized3d(Q0, Q1, Q2, c, S, integrate)
 
         return A*y+B
 
-    def projection(self, Qu, Qv, A, B, mu0, mu1, mu2,
-                         sigma0, sigma1, sigma2,
-                         phi, theta, omega, integrate=False):
-
-        c = np.array([mu0, mu1, mu2])
-        S = self.S_matrix(sigma0, sigma1, sigma2, phi, theta, omega)
+    def projection(self, Qu, Qv, A, B, c, S, integrate=False):
 
         mu_u, mu_v, sigma_u, sigma_v, rho = self.projection_params(c, S)
 
@@ -877,12 +851,7 @@ class PeakEllipsoid:
 
         return A*y+B
 
-    def profile(self, Q, A, B, mu0, mu1, mu2,
-                      sigma0, sigma1, sigma2,
-                      phi, theta, omega, integrate=False):
-
-        c = np.array([mu0, mu1, mu2])
-        S = self.S_matrix(sigma0, sigma1, sigma2, phi, theta, omega)
+    def profile(self, Q, A, B, c, S, integrate=False):
 
         mu, sigma = self.profile_params(c, S)
 
@@ -911,23 +880,22 @@ class PeakEllipsoid:
 
         return mu_u, mu_v, s0, s1, corr
 
-    def generalized3d(self, Q0, Q1, Q2, mu0, mu1, mu2,
-                            sigma0, sigma1, sigma2,
-                            phi, theta, omega, integrate):
+    def generalized3d(self, Q0, Q1, Q2, c, S, integrate):
+
+        mu0, mu1, mu2 = c
 
         x0, x1, x2 = Q0-mu0, Q1-mu1, Q2-mu2
 
-        S = self.S_matrix(sigma0, sigma1, sigma2, phi, theta, omega)
-        inv_S = self.inv_S_matrix(sigma0, sigma1, sigma2, phi, theta, omega)
+        inv_S = np.linalg.inv(S)
 
         dx = [x0, x1, x2]
 
-        d = np.sqrt(np.einsum('i...,i...->...',
-                    np.einsum('ij,j...->i...', inv_S, dx), dx))
+        d2 = np.einsum('i...,i...->...',
+             np.einsum('ij,j...->i...', inv_S, dx), dx)
 
         scale = np.sqrt(np.linalg.det(2*np.pi*S)) if integrate else 1
 
-        return np.exp(-0.5*d**2)/scale
+        return np.exp(-0.5*d2)/scale
 
     def generalized2d(self, Qu, Qv, mu_u, mu_v,
                             sigma_u, sigma_v, rho, integrate):
@@ -937,18 +905,16 @@ class PeakEllipsoid:
         S = np.array([[sigma_u**2, sigma_u*sigma_v*rho],
                       [sigma_u*sigma_v*rho, sigma_v**2]])
 
-        inv_S = np.array([[sigma_v**2, -sigma_u*sigma_v*rho],
-                          [-sigma_u*sigma_v*rho, sigma_u**2]])\
-              / (sigma_u**2*sigma_v**2*(1-rho**2))
+        inv_S = np.linalg.inv(S)
 
         dx = [xu, xv]
 
-        d = np.sqrt(np.einsum('i...,i...->...',
-                    np.einsum('ij,j...->i...', inv_S, dx), dx))
+        d2 = np.einsum('i...,i...->...',
+             np.einsum('ij,j...->i...', inv_S, dx), dx)
 
         scale = np.sqrt(np.linalg.det(2*np.pi*S)) if integrate else 1
 
-        return np.exp(-0.5*d**2)/scale
+        return np.exp(-0.5*d2)/scale
 
     def generalized1d(self, Q, mu, sigma, integrate):
 
@@ -1080,24 +1046,40 @@ class PeakEllipsoid:
 
             out = Minimizer(self.residual,
                             self.params,
-                            fcn_args=(xye_1d, xye_2d, xye_3d, False),
+                            fcn_args=(xye_1d, xye_2d, xye_3d),
                             nan_policy='omit')
 
             result = out.minimize(method='least_squares', loss='soft_l1')
 
             self.params = result.params
 
-            self.params['r0'].set(vary=False)
-            self.params['r1'].set(vary=False)
-            self.params['r2'].set(vary=False)
+            c0 = self.params['c0'].value
+            c1 = self.params['c1'].value
+            c2 = self.params['c2'].value
 
-            self.params['phi'].set(vary=False)
-            self.params['theta'].set(vary=False)
-            self.params['omega'].set(vary=False)
+            r0 = self.params['r0'].value
+            r1 = self.params['r1'].value
+            r2 = self.params['r2'].value
 
-            self.params['c0'].set(vary=False)
-            self.params['c1'].set(vary=False)
-            self.params['c2'].set(vary=False)
+            phi = self.params['phi'].value
+            theta = self.params['theta'].value
+            omega = self.params['omega'].value
+
+            c, S = self.centroid_covariance(c0, c1, c2,
+                                            r0, r1, r2,
+                                            phi, theta, omega)
+
+            self.params.pop('r0')
+            self.params.pop('r1')
+            self.params.pop('r2')
+
+            self.params.pop('phi')
+            self.params.pop('theta')
+            self.params.pop('omega')
+
+            self.params.pop('c0')
+            self.params.pop('c1')
+            self.params.pop('c2')
 
             self.params['A_1d'].set(value=1, min=0, max=np.inf, vary=False)
             self.params['A_2d'].set(value=1, min=0, max=np.inf, vary=False)
@@ -1113,16 +1095,15 @@ class PeakEllipsoid:
             B_err = self.params['B_1d'].stderr
             if B_err is None:
                 B_err = 0
-    
+
             out = Minimizer(self.residual_prof,
                             self.params,
-                            fcn_args=(xye_1d, True),
+                            fcn_args=(c, S, xye_1d, True),
                             nan_policy='omit')
 
             result = out.minimize(method='least_squares', loss='soft_l1')
 
             self.params = result.params
-
             self.params['A_1d'].set(vary=False)
 
             A_sig_1d = self.params['A_1d'].stderr
@@ -1131,13 +1112,12 @@ class PeakEllipsoid:
 
             out = Minimizer(self.residual_proj,
                             self.params,
-                            fcn_args=(xye_2d, True),
+                            fcn_args=(c, S, xye_2d, True),
                             nan_policy='omit')
 
             result = out.minimize(method='least_squares', loss='soft_l1')
 
             self.params = result.params
-
             self.params['A_2d'].set(vary=False)
 
             A_sig_2d = self.params['A_2d'].stderr
@@ -1146,13 +1126,12 @@ class PeakEllipsoid:
 
             out = Minimizer(self.residual_func,
                             self.params,
-                            fcn_args=(xye_3d, True),
+                            fcn_args=(c, S, xye_3d, True),
                             nan_policy='omit')
 
             result = out.minimize(method='least_squares', loss='soft_l1')
 
             self.params = result.params
-
             self.params['A_3d'].set(vary=False)
 
             A_sig_3d = self.params['A_3d'].stderr
@@ -1164,14 +1143,6 @@ class PeakEllipsoid:
             B_1d = self.params['B_1d'].value
             B_2d = self.params['B_2d'].value
             B_3d = self.params['B_3d'].value
-
-            c0 = self.params['c0'].value
-            c1 = self.params['c1'].value
-            c2 = self.params['c2'].value
-
-            r0 = self.params['r0'].value
-            r1 = self.params['r1'].value
-            r2 = self.params['r2'].value
 
             A_sig_1d = A_1d if A_sig_1d is None else A_sig_1d
             A_sig_2d = A_2d if A_sig_2d is None else A_sig_2d
@@ -1189,15 +1160,6 @@ class PeakEllipsoid:
 
             self.intens_fit = I, I/sig
 
-            sigma0, sigma1, sigma2 = self.scale(r0, r1, r2)
-
-            phi = self.params['phi'].value
-            theta = self.params['theta'].value
-            omega = self.params['omega'].value
-
-            c = [c0, c1, c2]
-            S = self.S_matrix(r0, r1, r2, phi, theta, omega)
-
             x = [x0, x1, x2]
 
             y = d/n
@@ -1210,28 +1172,27 @@ class PeakEllipsoid:
             xye_1d = self.bin1d(x0, x1, x2, d, n)
             xye_2d = self.bin2d(x0, x1, x2, d, n)
 
-            args = Q0, Q1, Q2, A_3d, B_3d, c0, c1, c2, \
-                   sigma0, sigma1, sigma2, phi, theta, omega, True
+            args = Q0, Q1, Q2, A_3d, B_3d, c, S, True
 
             y_3d_fit = self.func(*args)
 
             (Qu, Qv), y, e = xye_2d
 
-            args = Qu, Qv, A_2d, B_2d, c0, c1, c2, \
-                   sigma0, sigma1, sigma2, phi, theta, omega, True
+            args = Qu, Qv, A_2d, B_2d, c, S, True
 
             y_2d_fit = self.projection(*args)
 
             Q, y, e = xye_1d
 
-            args = Q, A_1d, B_1d, c0, c1, c2, \
-                   sigma0, sigma1, sigma2, phi, theta, omega, True
+            args = Q, A_1d, B_1d, c, S, True
 
             y_1d_fit = self.profile(*args)
 
             fitting = xye_1d, y_1d_fit, xye_2d, y_2d_fit, xye_3d, y_3d_fit
 
             W = np.column_stack([self.n, self.u, self.v])
+
+            S = self.S_matrix(r0, r1, r2, phi, theta, omega)
 
             self.best_fit = c, S, W, *fitting
 
@@ -1271,6 +1232,39 @@ class PeakEllipsoid:
 
         return np.sum(np.isfinite(y))/y.size
 
+    def weighted_median(self, y, w):
+
+        sort = np.argsort(y)
+        y = y[sort]
+        w = w[sort]
+
+        cum_wgt = np.cumsum(w)
+        tot_wgt = np.sum(w)
+
+        ind = np.where(cum_wgt >= tot_wgt / 2)[0][0]
+
+        return y[ind]
+
+    def jackknife_uncertainty(self, y, w):
+
+        n = len(y)
+        med = np.zeros(n)
+
+        sort = np.argsort(y)
+        y = y[sort]
+        w = w[sort]
+
+        for i in range(n):
+            jk_y = np.delete(y, i)
+            jk_w = np.delete(w, i)
+            med[i] = self.weighted_median(jk_y, jk_w)
+
+        wgt_med = self.weighted_median(y, w)
+
+        dev = med-wgt_med
+
+        return np.sqrt((n-1)*np.sum(dev**2)/n)
+
     def integrate(self, x0, x1, x2, d, n, *params):
 
         pk = self.envelope(x0, x1, x2, d, n, *params)
@@ -1278,65 +1272,71 @@ class PeakEllipsoid:
         struct = scipy.ndimage.generate_binary_structure(3, 1)
         dilate = scipy.ndimage.binary_dilation(pk, struct, border_value=0)
 
-        bkg = (dilate ^ pk) & (n > 0)
+        bkg = (dilate ^ pk) & (n > 0) & (d > 0)
         pk = pk & (n > 0)
 
         y = d[bkg]/n[bkg]
         e = np.sqrt(d[bkg])/n[bkg]
 
         w = 1/e**2
-        mask = np.isfinite(w)
 
-        B = np.sum(y[mask]*w[mask])/np.sum(w[mask])
-        B_err = np.sqrt(1/np.sum(w[mask]))
+        if len(w) > 2:
+            B = self.weighted_median(y, w)
+            B_err = self.jackknife_uncertainty(y, w)
+        else:
+            B = B_err = 0
 
         y = d/n
         e = np.sqrt(d)/n
 
-        mask = np.isfinite(y) & np.isfinite(e)
+        # mask = np.isfinite(y) & np.isfinite(e)
 
-        points = np.array((x0[mask], x1[mask], x2[mask])).T
+        # points = np.array((x0[mask], x1[mask], x2[mask])).T
 
-        y = scipy.interpolate.griddata(points,
-                                       y[mask]-B,
-                                       (x0, x1, x2),
-                                       fill_value=B,
-                                       method='linear')
+        # y = scipy.interpolate.griddata(points,
+        #                                 y[mask]-B,
+        #                                 (x0, x1, x2),
+        #                                 fill_value=B,
+        #                                 method='linear')
 
-        e2 = scipy.interpolate.griddata(points,
-                                        e[mask]**2+B_err**2,
-                                        (x0, x1, x2),
-                                        fill_value=B_err**2,
-                                        method='linear')
+        # e2 = scipy.interpolate.griddata(points,
+        #                                 e[mask]**2+B_err**2,
+        #                                 (x0, x1, x2),
+        #                                 fill_value=B_err**2,
+        #                                 method='linear')
+
+        y -= B
+        e2 = e**2+B_err**2
 
         y[~pk] = 0
         e2[~pk] = 0
 
-        x0, x1, x2 = x0[:,0,0], x1[0,:,0], x2[0,0,:]
+        dx0 = x0[1,0,0]-x0[0,0,0]
+        dx1 = x1[0,1,0]-x1[0,0,0]
+        dx2 = x2[0,0,1]-x2[0,0,0]
 
-        intens = scipy.integrate.simps(\
-                 scipy.integrate.simps(\
-                 scipy.integrate.simps(y, x2), x1), x0)
+        d3x = dx0*dx1*dx2
 
-        sig = np.sqrt(scipy.integrate.simps(\
-                      scipy.integrate.simps(\
-                      scipy.integrate.simps(e2, x2**2), x1**2), x0**2))
+        # intens = scipy.integrate.trapezoid(\
+        #           scipy.integrate.trapezoid(\
+        #           scipy.integrate.trapezoid(y, dx=dx2), dx=dx1), dx=dx0)
 
-        B0 = self.interp_fit[-1]
-        B_err = np.sqrt(self.err**2+B_err**2)
-
-        # intens = np.nansum(y-B)*d3x
-        # sig = np.sqrt(np.nansum(e**2+B_err**2))*d3x
-
-        self.bkg = B0
+        intens = np.nansum(y)*d3x
+        var = np.nansum(e2)*d3x**2
 
         I, I_sig = self.intens_fit
 
-        sig = np.sqrt(sig**2+(I[-1]/I_sig[-1])**2)
+        sig = np.sqrt(var+(I[-1]/I_sig[-1])**2)
 
-        if np.abs(intens-I[-1]) > 5*sig or np.abs(B-B0) > 5*B_err:
-            I_sig[-1] = 1
+        # if np.abs(intens-I[-1]) > 30*sig:
+        #     I_sig[-1] = 1
+
+        I_sig[-1] = intens/sig
+
+        I[-1] = intens
 
         self.intens_fit = I, I_sig
+        self.bkg = B, B_err
+        print(self.bkg)
 
         return intens, sig
