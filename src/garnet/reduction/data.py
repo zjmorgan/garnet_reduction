@@ -95,9 +95,10 @@ class BaseDataModel:
         self.k_min = 2*np.pi/np.max(self.wavelength_band)
         self.k_max = 2*np.pi/np.min(self.wavelength_band)
 
+        self.ref_inst = self.instrument_config['InstrumentName']
+
         if not mtd.doesExist(self.instrument):
 
-            self.ref_inst = self.instrument_config['InstrumentName']
             LoadEmptyInstrument(InstrumentName=self.ref_inst,
                                 OutputWorkspace=self.instrument)
 

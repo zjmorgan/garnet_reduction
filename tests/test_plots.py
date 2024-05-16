@@ -41,7 +41,7 @@ def test_peak_plot():
 
     Q0_x, Q0_y, Q0_z = 1.1, 0.1, -1.2
 
-    sigma_x, sigma_y, sigma_z = 0.15, 0.25, 0.2
+    sigma_x, sigma_y, sigma_z = 0.15, 0.25, 0.1
     rho_yz, rho_xz, rho_xy = 0.5, -0.1, -0.15
 
     a = 0.3

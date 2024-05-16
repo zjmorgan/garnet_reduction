@@ -67,10 +67,7 @@ class PeakPlot(BasePlot):
 
         self.fig = plt.figure(figsize=(14.4, 4.8), layout='constrained')
 
-        (x0, x1, x2), _, _ = xye_3d
-
-        r0 = x0[-1,0,0]-x0[0,0,0]
-        r1 = x1[0,-1,0]-x1[0,0,0]
+        _, (r0, r1, r2), _, _ = xye_3d
 
         sp = GridSpec(1, 3, figure=self.fig, width_ratios=[1,0.75,1.25])
 
@@ -137,7 +134,7 @@ class PeakPlot(BasePlot):
 
         """
 
-        axes, y, e = xye
+        axes, bins, y, e = xye
 
         x0, x1, x2 = axes
 
@@ -274,14 +271,14 @@ class PeakPlot(BasePlot):
 
         Parameters
         ----------
-        x, y, e : 3d-array
+        x, dx, y, e : 3d-array
             Bins, signal, and error.
         y_fit : 3d-array
             Fitted result.
 
         """
 
-        (xu, xv), y, e = xye
+        (xu, xv), (dxu, dxv), y, e = xye
 
         mask = np.isfinite(y)
         y_fit[~mask] = np.nan
@@ -342,7 +339,7 @@ class PeakPlot(BasePlot):
 
         """
 
-        x, y, e = xye
+        x, dx, y, e = xye
 
         gs = self.gs[0]
 

@@ -1,6 +1,6 @@
 import sys
 import os
-import shutil
+import concurrent.futures
 
 directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(directory)
@@ -29,6 +29,13 @@ inst_dict = {'corelli': 'CORELLI',
              'hb3a': 'DEMAND',
              'wand2': 'WAND²',
              'hb2c': 'WAND²'}
+
+def delete_directory(path):
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        for root, dirs, files in os.walk(path, topdown=False):
+            executor.map(os.remove,
+                         [os.path.join(root, name) for name in files])
+        os.rmdir(path)
 
 if __name__ == '__main__':
 
@@ -70,12 +77,12 @@ if __name__ == '__main__':
 
         output = os.path.join(rp.plan['OutputPath'], path, 'plots')
         if os.path.exists(output):
-            shutil.rmtree(output)
+            delete_directory(output)
         os.mkdir(output)
 
         output = os.path.join(rp.plan['OutputPath'], path, 'diagnostics')
         if os.path.exists(output):
-            shutil.rmtree(output)
+            delete_directory(output)
         os.mkdir(output)
 
         pt = ParallelTasks(func, comb)
