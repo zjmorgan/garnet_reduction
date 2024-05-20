@@ -1,10 +1,60 @@
 import os
 import numpy as np
 
+import scipy.linalg
+import scipy.spatial
+
 from garnet.reduction.integration import PeakSphere, PeakEllipsoid
 from garnet.plots.peaks import RadiusPlot, PeakPlot
+from garnet.plots.volume import SlicePlot
 
 filepath = os.path.dirname(os.path.abspath(__file__))
+
+def test_slice_plot():
+
+    np.random.seed(13)
+
+    U = scipy.spatial.transform.Rotation.random().as_matrix()
+
+    a, b, c = 5, 5, 7
+    alpha, beta, gamma = np.deg2rad([90, 90, 120])
+
+    G = np.array([[a**2, a*b*np.cos(gamma), a*c*np.cos(beta)],
+                  [a*b*np.cos(gamma), b**2, b*c*np.cos(alpha)],
+                  [a*c*np.cos(beta), b*c*np.cos(alpha), c**2]])
+
+    B = scipy.linalg.cholesky(np.linalg.inv(G), lower=False)
+
+    UB = U @ B
+
+    W = np.eye(3)
+
+    x0 = np.linspace(-5, 10, 31)
+    x1 = np.linspace(-3, 9, 25)
+    x2 = np.linspace(-7, 8, 61)
+
+    axes = x0, x1, x2
+
+    X0, X1, X2 = np.meshgrid(*axes, indexing='ij')
+
+    signal = np.ones_like(X0)
+
+    signal[(X0 % 1 == 0) & (X1 % 1 == 0) & (X2 % 1 == 0)] = 1000
+
+    plot = SlicePlot(UB, W)
+    params = plot.calculate_transforms(signal, axes, ['h','k','l'], [0,0,1], 0)
+    plot.make_slice(*params)
+    plot.save_plot(os.path.join(filepath, 'slice2.png'))
+
+    plot = SlicePlot(UB, W)
+    params = plot.calculate_transforms(signal, axes, ['h','k','l'], [0,1,0], 0)
+    plot.make_slice(*params)
+    plot.save_plot(os.path.join(filepath, 'slice1.png'))
+
+    plot = SlicePlot(UB, W)
+    params = plot.calculate_transforms(signal, axes, ['h','k','l'], [1,0,0], 0)
+    plot.make_slice(*params)
+    plot.save_plot(os.path.join(filepath, 'slice0.png'))
 
 def test_radius_plot():
 
@@ -42,7 +92,7 @@ def test_peak_plot():
     Q0_x, Q0_y, Q0_z = 1.1, 0.1, -1.2
 
     sigma_x, sigma_y, sigma_z = 0.15, 0.25, 0.1
-    rho_yz, rho_xz, rho_xy = 0.5, -0.1, -0.15
+    rho_yz, rho_xz, rho_xy = 0.5, -0.1, -0.12
 
     a = 0.3
     b = 1.4
@@ -121,8 +171,6 @@ def test_peak_plot():
     c, S, W, *fitting = ellipsoid.best_fit
 
     vals = ellipsoid.interp_fit
-
-    ellipsoid.integrate(Qx, Qy, Qz, data, norm, *params)
 
     intens, sig_noise = ellipsoid.intens_fit
 

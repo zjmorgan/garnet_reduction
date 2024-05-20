@@ -6,6 +6,8 @@ config['Q.convention'] = 'Crystallography'
 
 import numpy as np
 
+from garnet.plots.base import Pages
+from garnet.plots.volume import SlicePlot
 from garnet.reduction.data import DataModel
 from garnet.reduction.crystallography import space_point, point_laue
 from garnet.config.instruments import beamlines
@@ -56,6 +58,7 @@ class Normalization:
     def normalize(self):
 
         output_file = self.get_output_file()
+        diag_file = self.get_diagnostic_file()
 
         data = DataModel(beamlines[self.plan['Instrument']])
         data.update_raw_path(self.plan)
@@ -63,6 +66,12 @@ class Normalization:
         runs = self.plan['Runs']
 
         if data.laue:
+
+            grouping_file = diag_file.replace('.nxs', '.xml')
+
+            data.preprocess_detectors()
+            data.create_grouping(grouping_file, self.plan.get('Grouping'))
+            mtd.remove('detectors')
 
             for run in runs:
 
@@ -79,11 +88,13 @@ class Normalization:
 
                 data.crop_for_normalization('data')
 
+                data.load_background(self.plan.get('BackgroundFile'), 'data')
+
+                data.group_pixels(grouping_file, 'data')
+
                 data.load_clear_UB(self.plan['UBFile'], 'data')
 
                 data.convert_to_Q_sample('data', 'md', lorentz_corr=False)
-
-                data.load_background(self.plan.get('BackgroundFile'), 'data')
 
                 data.normalize_to_hkl('md',
                                       self.params['Projections'],
@@ -100,7 +111,7 @@ class Normalization:
                                self.plan.get('Grouping'))
 
                 data.load_generate_normalization(self.plan['VanadiumFile'])
-        
+
                 if self.plan['UBFile'] is not None:
 
                     data.load_clear_UB(self.plan['UBFile'], 'md')
@@ -117,7 +128,7 @@ class Normalization:
 
                 for run in runs:
 
-                    data.load_data('md', 
+                    data.load_data('md',
                                    self.plan['IPTS'],
                                    run,
                                    self.plan.get('Grouping'))
@@ -155,6 +166,8 @@ class Normalization:
 
         mtd.clear()
 
+        os.remove(grouping_file)
+
         return output_file
 
     def get_file(self, file, ws=''):
@@ -182,7 +195,7 @@ class Normalization:
 
     def append_name(self, file):
         """
-        Update filename with identifier name 
+        Update filename with identifier name
 
         Parameters
         ----------
@@ -225,7 +238,7 @@ class Normalization:
     def binning_name(self):
         """
         Bin size for each dimension.
-        
+
         `_N0xN1xN2`
 
         Returns
@@ -234,7 +247,7 @@ class Normalization:
             Cross separated integers.
 
         """
-        
+
         bins = self.params.get('Bins')
 
         return '_'+'x'.join(np.array(bins).astype(str).tolist())
@@ -371,6 +384,42 @@ class Normalization:
         data.save_histograms(norm_file, 'norm', sample_logs=True)
         data.save_histograms(result_file, 'result', sample_logs=True)
 
+        signal, error, *_ = data.extract_bin_info('result')
+        UB, W, titles, axes = data.extract_axis_info('result')
+
+        plot_path = self.get_plot_path()
+
+        for i, vals in enumerate(axes):
+
+            norm = np.zeros(3, dtype=int)
+            norm[i] = 1
+
+            plot_name = 'slice_{}.pdf'.format(titles[i].replace(' ', ''))
+            pdf = Pages(os.path.join(plot_path, plot_name))
+
+            for val in vals:
+
+                plot = SlicePlot(UB, W)
+
+                params = plot.calculate_transforms(signal,
+                                                   axes,
+                                                   titles,
+                                                   norm,
+                                                   val)
+
+                coords, values, labels, T, aspect = params
+
+                plot.make_slice(coords, values, labels, T, aspect)
+
+                if np.isclose(np.round(val, 4) % 1, 0):
+                    name = labels[2].replace(' ', '')
+                    plot_name = 'slice_{}.png'.format(name)
+                    plot.save_plot(os.path.join(plot_path, plot_name))
+
+                pdf.add_plot()
+
+            pdf.close()
+
         if mtd.doesExist('bkg_data') and mtd.doesExist('bkg_norm'):
 
             data_file = self.get_file(diag_file, 'bkg_data')
@@ -430,6 +479,6 @@ class Normalization:
 
         """
 
-        return os.path.join(self.plan['OutputPath'], 
-                            'normalization/diagnostics', 
+        return os.path.join(self.plan['OutputPath'],
+                            'normalization/diagnostics',
                             self.plan['OutputName']+'.nxs')

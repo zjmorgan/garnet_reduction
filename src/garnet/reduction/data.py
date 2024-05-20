@@ -16,6 +16,7 @@ from mantid.simpleapi import (Load,
                               HB3AAdjustSampleNorm,
                               CorelliCrossCorrelate,
                               NormaliseByCurrent,
+                              GroupDetectors,
                               LoadEmptyInstrument,
                               CopyInstrumentParameters,
                               ConvertToMD,
@@ -61,6 +62,7 @@ class BaseDataModel:
     def __init__(self, instrument_config):
 
         self.elastic = None
+        self.grouping = None
 
         self.instrument_config = instrument_config
         self.instrument = self.instrument_config['FancyName']
@@ -133,6 +135,10 @@ class BaseDataModel:
 
         self.raw_file_path = os.path.join(raw_path, raw_file)
 
+        # files = self.get_file_name_list(plan['IPTS'], plan['Runs'])
+        # for file in files:
+        #     assert os.path.exists(file)
+
     def load_clear_UB(self, filename, ws):
         """
         Load UB from file and replace.
@@ -164,6 +170,30 @@ class BaseDataModel:
 
         SaveIsawUB(InputWorkspace=ws, Filename=filename)
 
+    def get_file_name_list(self, IPTS, runs):
+        """
+        Complete list of file paths.
+
+        Parameters
+        ----------
+        IPTS : int
+            Proposal number.
+        runs : list, int
+            List of run number(s).
+
+        Returns
+        -------
+        filenames : list
+            List of filepaths.
+
+        """
+
+        if type(runs) is int:
+            runs = [runs]
+
+        filename = self.raw_file_path
+        return [filename.format(IPTS, run) for run in runs]
+
     def file_names(self, IPTS, runs):
         """
         Complete file paths.
@@ -182,12 +212,8 @@ class BaseDataModel:
 
         """
 
-        if type(runs) is int:
-            runs = [runs]
-
-        filename = self.raw_file_path
-        filenames = ','.join([filename.format(IPTS, run) for run in runs])
-        return filenames
+        filenames = self.get_file_name_list(IPTS, runs)
+        return ','.join(filenames)
 
     def get_min_max_values(self):
         """
@@ -315,7 +341,7 @@ class BaseDataModel:
         error : array
             Data uncertanies.
         x0, x1, ... : array
-            Bin center coordinates.
+            Dense bin center coordinates.
 
         """
 
@@ -333,6 +359,45 @@ class BaseDataModel:
         xs = np.meshgrid(*xs, indexing='ij')
 
         return signal, error, *xs
+    
+    def extract_axis_info(self, ws):
+        """
+        Obtain the axis information from a histogram.
+
+        Parameters
+        ----------
+        ws : str
+            Name of histogram.
+
+        Returns
+        -------
+        UB : 3x3-matrix
+            UB-matrix.
+        W : 3x3-matrix
+            Projection matrix.
+        titles : list
+            Axis names and units.
+        x0, x1, ... : array
+            Bin center coordinates.
+
+        """
+
+        ei = mtd[ws].getExperimentInfo(0)
+
+        UB = ei.sample().getOrientedLattice().getUB()
+        W = np.array(ei.run().getProperty('W_MATRIX').value).reshape(3,3)
+
+        dims = [mtd[ws].getDimension(i) for i in range(mtd[ws].getNumDims())]
+
+        titles = [dim.name+' '+dim.getUnits() for dim in dims]
+
+        xs = [np.linspace(dim.getMinimum(),
+                          dim.getMaximum(),
+                          dim.getNBoundaries()) for dim in dims]
+
+        xs = [0.5*(x[1:]+x[:-1]) for x in xs]
+
+        return UB, W, titles, xs
 
     def combine_histograms(self, ws, merge):
         """
@@ -899,18 +964,34 @@ class LaueData(BaseDataModel):
                 LoadIsawDetCal(InputWorkspace=event_name,
                                Filename=detector_calibration)
 
-        if not mtd.doesExist('detectors'):
+        self.preprocess_detectors(event_name)
 
-            PreprocessDetectorsToMD(InputWorkspace=event_name,
+        self.calculate_maximum_Q()
+
+    def preprocess_detectors(self, ws=None):
+        """
+        Generate detector coordinates.
+
+        Parameters
+        ----------
+        event_name : str
+            Workspace with instrument data.
+
+        """
+
+        if ws is None:
+            ws = self.instrument
+
+        if not mtd.doesExist('detectors') and mtd.doesExist(ws):
+
+            ExtractMonitors(InputWorkspace=ws,
+                            DetectorWorkspace=ws)
+
+            PreprocessDetectorsToMD(InputWorkspace=ws,
                                     OutputWorkspace='detectors')
-
-            ExtractMonitors(InputWorkspace=event_name,
-                            DetectorWorkspace=event_name)
 
             two_theta = mtd['detectors'].column('TwoTheta')
             self.theta_max = 0.5*np.max(two_theta)
-
-        self.calculate_maximum_Q()
 
     def apply_mask(self, event_name, detector_mask):
         """
@@ -938,6 +1019,17 @@ class LaueData(BaseDataModel):
                           MaskedWorkspace='mask')
 
     def create_grouping(self, filename, grouping):
+        """
+        Generate grouping file.
+
+        Parameters
+        ----------
+        filename : str
+            Grouping file.
+        gropuing : str
+            Grouping pattern (rows)x(cols).
+
+        """
 
         grouping = '1x1' if grouping is None else grouping      
 
@@ -969,6 +1061,25 @@ class LaueData(BaseDataModel):
                         '<detids val="{}"/> '.format(det_ids)+ '</group>\n')
             f.write('</detector-grouping>')
 
+        self.grouping = filename
+
+    def group_pixels(self, filename, ws):
+        """
+        Group pixels with grouping file.
+
+        Parameters
+        ----------
+        filename : str
+            Grouping file.
+        ws : str
+            Workspace name.
+
+        """
+        
+        GroupDetectors(InputWorkspace=ws,
+                       MapFile=filename,
+                       OutputWorkspace=ws)
+
     def convert_to_Q_sample(self, event_name, md_name, lorentz_corr=False):
         """
         Convert raw data to Q-sample.
@@ -984,16 +1095,7 @@ class LaueData(BaseDataModel):
 
         """
 
-        if not mtd.doesExist('detectors'):
-
-            PreprocessDetectorsToMD(InputWorkspace=event_name,
-                                    OutputWorkspace='detectors')
-
-            ExtractMonitors(InputWorkspace=event_name,
-                            DetectorWorkspace=event_name)
-
-            two_theta = mtd['detectors'].column('TwoTheta')
-            self.theta_max = 0.5*np.max(two_theta)
+        self.preprocess_detectors(event_name)
 
         self.calculate_maximum_Q()
 
@@ -1028,6 +1130,10 @@ class LaueData(BaseDataModel):
             LoadNexus(Filename=vanadium_file,
                       OutputWorkspace='sa')
 
+            if self.grouping is not None:
+
+                self.group_pixels(self.grouping, 'sa')
+
         if not mtd.doesExist('flux'):
 
             LoadNexus(Filename=spectrum_file,
@@ -1061,7 +1167,7 @@ class LaueData(BaseDataModel):
                                    XMax=self.k_max,
                                    OutputWorkspace=event_name)
 
-    def load_background(self, filename, event_name):
+    def load_background(self, filename, event_name, grouping_filename=None):
         """
         Load a background file and scale to data.
 
@@ -1078,6 +1184,10 @@ class LaueData(BaseDataModel):
 
             Load(Filename=filename,
                  OutputWorkspace='bkg')
+
+            if self.grouping is not None:
+
+                self.group_pixels(self.grouping, 'bkg')
 
             if not mtd['bkg'].run().hasProperty('NormalizationFactor'):
 

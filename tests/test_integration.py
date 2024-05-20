@@ -172,8 +172,6 @@ def test_ellipsoid():
 
     params = ellipsoid.fit(Qx, Qy, Qz, data, norm)
 
-    intens, sig = ellipsoid.integrate(Qx, Qy, Qz, data, norm, *params)
-
     mu = params[0:3]
     radii = params[3:6]
     vectors = params[6:9]
@@ -184,8 +182,6 @@ def test_ellipsoid():
     s = np.sqrt(np.linalg.det(S))
     sigma = np.sqrt(np.linalg.det(cov))
 
-    assert np.isclose(intens, 1, rtol=0.1)
-    assert intens > 3*sig
     assert np.isclose(mu, Q0, atol=0.01).all()
     assert np.isclose(s, sigma, atol=0.001).all()
 

@@ -12,7 +12,21 @@ class Dumper(yaml.Dumper):
 Dumper.add_representer(list, Dumper.represent_list)
 
 def save_YAML(output, filename):
-    
+    """
+    Save reduction output file.
+
+    Parameters
+    ----------
+    output : TYPE
+        DESCRIPTION.
+    filename : str
+        Output file name.
+
+    Returns
+    -------
+    None.
+
+    """
     with open(filename, 'w') as f:
 
         yaml.dump(output, f, Dumper=Dumper, sort_keys=False)
@@ -31,6 +45,27 @@ class ReductionPlan:
             UB = self.plan['UBFile']
             assert os.path.exists(UB)
             assert os.path.splitext(UB)[1] == '.mat'
+
+        nxs_items = ['VanadiumFile',
+                     'FluxFile',
+                     'TubeCalibration',
+                     'BackgroundFile']
+
+        for item in nxs_items:
+            if self.plan.get(item) is not None:
+                fname = self.plan[item]
+                assert os.path.exists(fname)
+                assert os.path.splitext(fname)[1] in ['.nxs', '.h5']
+
+        if self.plan.get('MaskFile') is not None:
+            mask = self.plan['MaskFile']
+            assert os.path.exists(mask)
+            assert os.path.splitext(mask)[1] == '.xml'
+
+        if self.plan.get('DetectorCalibration') is not None:
+            detcal = self.plan['DetectorCalibration']
+            assert os.path.exists(detcal)
+            assert os.path.splitext(detcal)[1].lower() in ['.xml', '.detcal']
 
     def set_output(self, filename):
         """

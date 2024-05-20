@@ -1,9 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import matplotlib.style as mplstyle
-mplstyle.use('fast')
-
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from matplotlib.patches import Ellipse
@@ -22,8 +19,8 @@ class RadiusPlot(BasePlot):
 
         plt.close('all')
 
-        self.fig, self.ax = plt.subplots(1, 
-                                         1, 
+        self.fig, self.ax = plt.subplots(1,
+                                         1,
                                          figsize=(6.4, 4.8),
                                          layout='constrained')
 
@@ -164,6 +161,7 @@ class PeakPlot(BasePlot):
                       y2.T,
                       vmin=vmin,
                       vmax=vmax,
+                      rasterized=True,
                       shading='nearest')
 
         ax.minorticks_on()
@@ -180,6 +178,7 @@ class PeakPlot(BasePlot):
                       y2_fit.T,
                       vmin=vmin,
                       vmax=vmax,
+                      rasterized=True,
                       shading='nearest')
 
         ax.minorticks_on()
@@ -198,6 +197,7 @@ class PeakPlot(BasePlot):
                       y1.T,
                       vmin=vmin,
                       vmax=vmax,
+                      rasterized=True,
                       shading='nearest')
 
         ax.minorticks_on()
@@ -214,6 +214,7 @@ class PeakPlot(BasePlot):
                       y1_fit.T,
                       vmin=vmin,
                       vmax=vmax,
+                      rasterized=True,
                       shading='nearest')
 
         ax.minorticks_on()
@@ -232,8 +233,8 @@ class PeakPlot(BasePlot):
                       y0.T,
                       vmin=vmin,
                       vmax=vmax,
-                      shading='nearest',
-                      zorder=0)
+                      rasterized=True,
+                      shading='nearest')
 
         ax.minorticks_on()
         ax.set_aspect(1)
@@ -250,6 +251,7 @@ class PeakPlot(BasePlot):
                       y0_fit.T,
                       vmin=vmin,
                       vmax=vmax,
+                      rasterized=True,
                       shading='nearest')
 
         ax.minorticks_on()
@@ -298,6 +300,7 @@ class PeakPlot(BasePlot):
                       y.T,
                       vmin=vmin,
                       vmax=vmax,
+                      rasterized=True,
                       shading='nearest')
 
         ax.minorticks_on()
@@ -314,6 +317,7 @@ class PeakPlot(BasePlot):
                       y_fit.T,
                       vmin=vmin,
                       vmax=vmax,
+                      rasterized=True,
                       shading='nearest')
 
         ax.minorticks_on()
@@ -348,9 +352,10 @@ class PeakPlot(BasePlot):
         self.prof = ax
 
         ax.errorbar(x, y, e, fmt='o')
-        ax.plot(x, y_fit, '.', color='C1')
+        ax.step(x, y, where='mid', color='C0')
+        ax.step(x, y_fit, where='mid', color='C1')
         ax.minorticks_on()
-        ax.set_xlabel(r'$\Delta{Q}$ [$\AA^{-1}$]')
+        ax.set_xlabel(r'$|Q|$ [$\AA^{-1}$]')
 
     def add_ellipsoid(self, c, S, W, vals):
         """
@@ -375,97 +380,100 @@ class PeakPlot(BasePlot):
                S[0,2]/r[0]/r[2],
                S[0,1]/r[0]/r[1]]
 
-        mu, mu_u, mu_v, rad, ru, rv, corr, a, b, *_ = vals
+        mu, mu_u, mu_v, rad, ru, rv, corr, *_ = vals
 
         self.prof.axvline(x=mu-rad, color='k', linestyle='--')
         self.prof.axvline(x=mu+rad, color='k', linestyle='--')
 
-        sigma = 0.25*rad
-
-        x = np.linspace(*self.prof.get_xlim(), 256)
-        y_fit = b+a*np.exp(-0.5*(x-mu)**2/sigma**2)/np.sqrt(2*np.pi*sigma**2)
-
-        self.prof.plot(x, y_fit, '-')
-
         for ax in self.proj:
-
-            peak = Ellipse((0,0),
-                           width=1,
-                           height=1,
-                           linestyle='-',
-                           edgecolor='w',
-                           facecolor='none',
-                           rasterized=False)
-
-            trans = Affine2D()
-
-            peak.width = 2*np.sqrt(1+corr)
-            peak.height = 2*np.sqrt(1-corr)
-
-            trans.rotate_deg(45).scale(ru,rv).translate(mu_u,mu_v)
-
-            peak.set_transform(trans+ax.transData)
-            ax.add_patch(peak)
+            self._draw_ellipse(ax, mu_u, mu_v, ru, rv, corr)
 
         for ax in self.ellip[0:2]:
-
-            peak = Ellipse((0,0),
-                           width=1,
-                           height=1,
-                           linestyle='-',
-                           edgecolor='w',
-                           facecolor='none',
-                           rasterized=False)
-
-            trans = Affine2D()
-
-            peak.width = 2*np.sqrt(1+rho[2])
-            peak.height = 2*np.sqrt(1-rho[2])
-
-            trans.rotate_deg(45).scale(r[0],r[1]).translate(c[0],c[1])
-
-            peak.set_transform(trans+ax.transData)
-            ax.add_patch(peak)
+            self._draw_ellipse(ax, c[0], c[1], r[0], r[1], rho[2])
+            self._draw_intersecting_line(ax, c[0], c[1])
 
         for ax in self.ellip[2:4]:
-
-            peak = Ellipse((0,0),
-                           width=1,
-                           height=1,
-                           linestyle='-',
-                           edgecolor='w',
-                           facecolor='none',
-                           rasterized=False)
-
-            trans = Affine2D()
-
-            peak.width = 2*np.sqrt(1+rho[1])
-            peak.height = 2*np.sqrt(1-rho[1])
-
-            trans.rotate_deg(45).scale(r[0],r[2]).translate(c[0],c[2])
-
-            peak.set_transform(trans+ax.transData)
-            ax.add_patch(peak)
+            self._draw_ellipse(ax, c[0], c[2], r[0], r[2], rho[1])
+            self._draw_intersecting_line(ax, c[0], c[2])
 
         for ax in self.ellip[4:6]:
+            self._draw_ellipse(ax, c[1], c[2], r[1], r[2], rho[0])
+            self._draw_intersecting_line(ax, c[1], c[2])
 
-            peak = Ellipse((0,0),
-                           width=1,
-                           height=1,
-                           linestyle='-',
-                           edgecolor='w',
-                           facecolor='none',
-                           rasterized=False)
+    def _draw_ellipse(self, ax, cx, cy, rx, ry, rho):
+        """
+        Draw ellipse with center, size, and orientation.
 
-            trans = Affine2D()
+        Parameters
+        ----------
+        ax : axis
+            Plot axis.
+        cx, cy : float
+            Center.
+        rx, xy : float
+            Radii.
+        rho : float
+            Correlation.
 
-            peak.width = 2*np.sqrt(1+rho[0])
-            peak.height = 2*np.sqrt(1-rho[0])
+        """
 
-            trans.rotate_deg(45).scale(r[1],r[2]).translate(c[1],c[2])
+        peak = Ellipse((0, 0),
+                       width=2*np.sqrt(1+rho),
+                       height=2*np.sqrt(1-rho),
+                       linestyle='-',
+                       edgecolor='w',
+                       facecolor='none',
+                       rasterized=False,
+                       zorder=100)
 
-            peak.set_transform(trans+ax.transData)
-            ax.add_patch(peak)
+        trans = Affine2D()
+        trans.rotate_deg(45).scale(rx, ry).translate(cx, cy)
+
+        peak.set_transform(trans+ax.transData)
+        ax.add_patch(peak)
+
+    def _draw_intersecting_line(self, ax, x0, y0):
+        """
+        Draw line toward origin.
+
+        Parameters
+        ----------
+        ax : axis
+            Plot axis.
+        x0, y0 : float
+            Center.
+
+        """
+
+        x_min, x_max = ax.get_xlim()
+        y_min, y_max = ax.get_ylim()
+
+        if x0 != 0:
+            slope = y0 / x0
+        else:
+            slope = np.inf
+
+        y_at_x_min = slope * (x_min - x0) + y0 if slope != np.inf else y_min
+        y_at_x_max = slope * (x_max - x0) + y0 if slope != np.inf else y_max
+        x_at_y_min = (y_min - y0) / slope + x0 if slope != 0 else x_min
+        x_at_y_max = (y_max - y0) / slope + x0 if slope != 0 else x_max
+
+        points = []
+        if y_min <= y_at_x_min <= y_max:
+            points.append((x_min, y_at_x_min))
+        if y_min <= y_at_x_max <= y_max:
+            points.append((x_max, y_at_x_max))
+        if x_min <= x_at_y_min <= x_max:
+            points.append((x_at_y_min, y_min))
+        if x_min <= x_at_y_max <= x_max:
+            points.append((x_at_y_max, y_max))
+
+        if len(points) > 2:
+            points = sorted(points, key=lambda p: (p[0], p[1]))[:2]
+
+        (x1, y1), (x2, y2) = points
+
+        ax.plot([x1, x2], [y1, y2], color='k', linestyle='--')
 
     def _sci_notation(self, x):
         """
