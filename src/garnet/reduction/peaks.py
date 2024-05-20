@@ -509,8 +509,8 @@ class PeaksModel:
         for peak, pk in zip(mtd[peaks], mtd['tmp_'+peaks]):
             pk.setPeakShape(peak.getPeakShape())
 
-        RenameWorkspace(InputWorkspace=peaks,
-                        OutputWorkspace='tmp_'+peaks)
+        RenameWorkspace(InputWorkspace='tmp_'+peaks,
+                        OutputWorkspace=peaks)
 
     def combine_peaks(self, peaks, merge):
         """

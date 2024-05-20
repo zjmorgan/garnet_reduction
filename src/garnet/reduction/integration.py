@@ -176,15 +176,41 @@ class Integration:
 
         runs = self.plan['Runs']
 
-        data.load_data('data',
-                       self.plan['IPTS'],
-                       runs,
-                       self.plan.get('Grouping'))
+        if self.plan['Instrument'] == 'WAND²':
 
-        data.load_generate_normalization(self.plan['VanadiumFile'], 'data')
+            data.load_data('data',
+                           self.plan['IPTS'],
+                           runs,
+                           self.plan.get('Grouping'))
 
-        data.convert_to_Q_sample('data', 'md_data', lorentz_corr=False)
-        data.convert_to_Q_sample('data', 'md_corr', lorentz_corr=True)
+            data.load_generate_normalization(self.plan['VanadiumFile'], 'data')
+
+            data.convert_to_Q_sample('data', 'md_data', lorentz_corr=False)
+            data.convert_to_Q_sample('data', 'md_corr', lorentz_corr=True)
+
+
+        else:
+
+            for run in runs:
+
+                data.load_data('data',
+                               self.plan['IPTS'],
+                               run,
+                               self.plan.get('Grouping'))
+
+                data.load_generate_normalization(self.plan['VanadiumFile'],
+                                                 'data')
+
+                data.convert_to_Q_sample('data',
+                                         'tmp_data',
+                                         lorentz_corr=False)
+
+                data.convert_to_Q_sample('data',
+                                         'tmp_corr',
+                                         lorentz_corr=True)
+
+                data.combine_histograms('tmp_data', 'md_data')
+                data.combine_histograms('tmp_corr', 'md_corr')
 
         for ws in ['md_data', 'md_corr', 'norm']:
             file = output_file.replace('.nxs', '_{}.nxs'.format(ws))
