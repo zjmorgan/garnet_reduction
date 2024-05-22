@@ -12,7 +12,6 @@ from mantid.simpleapi import (FindPeaksMD,
                               CombinePeaksWorkspaces,
                               CreatePeaksWorkspace,
                               ConvertPeaksWorkspace,
-                              RenameWorkspace,
                               CopySample,
                               CloneWorkspace,
                               SaveNexus,
@@ -504,13 +503,7 @@ class PeaksModel:
         """
 
         ConvertPeaksWorkspace(PeakWorkspace=peaks,
-                              OutputWorkspace='tmp_'+peaks)
-
-        for peak, pk in zip(mtd[peaks], mtd['tmp_'+peaks]):
-            pk.setPeakShape(peak.getPeakShape())
-
-        RenameWorkspace(InputWorkspace='tmp_'+peaks,
-                        OutputWorkspace=peaks)
+                              OutputWorkspace=peaks)
 
     def combine_peaks(self, peaks, merge):
         """

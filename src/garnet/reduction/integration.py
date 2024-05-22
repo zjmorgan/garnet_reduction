@@ -176,6 +176,10 @@ class Integration:
 
         runs = self.plan['Runs']
 
+        peaks = PeaksModel()
+
+        lamda_min, lamda_max = data.wavelength_band
+
         if self.plan['Instrument'] == 'WAND²':
 
             data.load_data('data',
@@ -188,6 +192,32 @@ class Integration:
             data.convert_to_Q_sample('data', 'md_data', lorentz_corr=False)
             data.convert_to_Q_sample('data', 'md_corr', lorentz_corr=True)
 
+            if self.plan.get('UBFile') is None:
+                UB_file = output_file.replace('.nxs', '.mat')
+                data.save_UB(UB_file, 'md_data')
+                self.plan['UBFile'] = UB_file
+
+            data.load_clear_UB(self.plan['UBFile'], 'md_data')
+
+            peaks.predict_peaks('md_data',
+                                'peaks',
+                                self.params['Centering'],
+                                self.params['MinD'],
+                                lamda_min,
+                                lamda_max)
+
+            peaks.convert_peaks('peaks')
+
+            if self.params['MaxOrder'] > 0:
+
+                self.predict_satellite_peaks('peaks',
+                                             'md_data',
+                                             lamda_min,
+                                             lamda_max)
+
+                peaks.remove_duplicate_peaks('peaks')
+
+            peaks.combine_peaks('peaks', 'combine')
 
         else:
 
@@ -212,6 +242,35 @@ class Integration:
                 data.combine_histograms('tmp_data', 'md_data')
                 data.combine_histograms('tmp_corr', 'md_corr')
 
+                if self.plan.get('UBFile') is None:
+                    UB_file = output_file.replace('.nxs', '.mat')
+                    data.save_UB(UB_file, 'md_data')
+                    self.plan['UBFile'] = UB_file
+
+                data.load_clear_UB(self.plan['UBFile'], 'md_data')
+
+                peaks.predict_peaks('md_data',
+                                    'peaks',
+                                    self.params['Centering'],
+                                    self.params['MinD'],
+                                    lamda_min,
+                                    lamda_max)
+
+                peaks.convert_peaks('peaks')
+
+                if self.params['MaxOrder'] > 0:
+
+                    self.predict_satellite_peaks('peaks',
+                                                 'md_data',
+                                                 lamda_min,
+                                                 lamda_max)
+
+                    peaks.remove_duplicate_peaks('peaks')
+
+                peaks.combine_peaks('peaks', 'combine')
+
+        peaks.save_peaks(output_file, 'combine')
+
         for ws in ['md_data', 'md_corr', 'norm']:
             file = output_file.replace('.nxs', '_{}.nxs'.format(ws))
             data.save_histograms(file, ws, sample_logs=True)
@@ -229,8 +288,6 @@ class Integration:
 
         peaks = PeaksModel()
 
-        lamda_min, lamda_max = data.wavelength_band
-
         for ws in ['md_data', 'md_corr', 'norm']:
 
             merge = []
@@ -241,40 +298,17 @@ class Integration:
                 merge.append(md_file)
                 os.remove(md_file)
 
-            if ws == 'md_data':
-
-                if self.plan.get('UBFile') is None:
-                    UB_file = output_file.replace('.nxs', '.mat')
-                    data.save_UB(UB_file, md_file)
-                    self.plan['UBFile'] = UB_file
-
-                for md_file in merge:
-
-                    data.load_clear_UB(self.plan['UBFile'], md_file)
-
-                    peaks.predict_peaks(md_file,
-                                        'peaks',
-                                        self.params['Centering'],
-                                        self.params['MinD'],
-                                        lamda_min,
-                                        lamda_max)
-
-                    if self.params['MaxOrder'] > 0:
-
-                        self.predict_satellite_peaks('peaks',
-                                                     md_file,
-                                                     lamda_min,
-                                                     lamda_max)
-
-                        peaks.remove_duplicate_peaks('peaks')
-
-                    peaks.combine_peaks('peaks', 'combine')
-
             data.combine_Q_sample(merge, ws)
 
             if ws == 'md_data':
+                peaks.load_peaks(file, 'peaks')
+                peaks.combine_peaks('peaks', 'combine')
+                os.remove(file)
                 md_file = output_file.replace('.nxs', '_{}.nxs'.format(ws))
                 data.save_histograms(md_file, ws, sample_logs=True)
+
+        pk_file = output_file.replace('.nxs', '_pk.nxs')
+        peaks.save_peaks(pk_file, 'combine')
 
         peaks.renumber_runs_by_index('md_data', 'combine')
 
@@ -284,11 +318,9 @@ class Integration:
 
         r_cut = self.estimate_peak_size('combine', 'md_corr')
 
-        self.fit_peaks('combine', r_cut)
+        self.fit_peaks('combine', r_cut, rotation=True)
 
         peaks.remove_weak_peaks('combine')
-
-        peaks.convert_peaks('combine')
 
         peaks.save_peaks(output_file, 'combine')
 
@@ -382,7 +414,7 @@ class Integration:
                                           self.params['MaxOrder'],
                                           self.params['CrossTerms'])
 
-    def fit_peaks(self, peaks_ws, r_cut):
+    def fit_peaks(self, peaks_ws, r_cut, rotation=False):
         """
         Integrate peaks.
 
@@ -392,6 +424,8 @@ class Integration:
             Peaks table.
         r_cut : float
             Cutoff radius.
+        rotation: bool, optional
+            Apply the projection along the rotation axis. Default is `False`.
 
         """
 
@@ -423,7 +457,8 @@ class Integration:
 
                 ellipsoid = PeakEllipsoid(*params,
                                           r_cut/3,
-                                          self.params['Radius'])
+                                          self.params['Radius'],
+                                          rotation)
 
                 params = ellipsoid.fit(Q0, Q1, Q2, d, n)
 
@@ -641,14 +676,16 @@ class PeakSphere:
 
 class PeakEllipsoid:
 
-    def __init__(self, c0, c1, c2, r0, r1, r2, v0, v1, v2, delta, r_cut):
+    def __init__(self, c0, c1, c2,
+                       r0, r1, r2,
+                       v0, v1, v2, delta, r_cut, rotation=False):
 
         params = Parameters()
 
         self.params = params
 
         Q = [c0, c1, c2]
-        self.n = self.profile_axis(Q)
+        self.n = self.profile_axis(Q, rotation)
         self.u, self.v = self.projection_axes(self.n)
 
         if np.allclose(np.column_stack([v0,v1,v2]), np.eye(3)):

@@ -20,3 +20,4 @@ Normalization:
   Projections: [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
   Extents: [[-5, 5], [-9, 9], [-5, 5]]
   Bins: [201, 361, 201]
+Grouping: 4x4

@@ -46,7 +46,7 @@ def test_wand2():
     config_file = 'wand2_reduction_plan.yaml'
     reduction_plan = os.path.abspath(os.path.join('./tests/data', config_file))
     script = os.path.abspath('./src/garnet/workflow.py')
-    command = ['python', script, config_file, 'int', '1']
+    command = ['python', script, config_file, 'int', '4']
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
