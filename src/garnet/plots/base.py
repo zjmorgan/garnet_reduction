@@ -1,18 +1,19 @@
 import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
-mplstyle.use('fast')
+
+mplstyle.use("fast")
 
 from matplotlib.backends.backend_pdf import PdfPages
 
-class BasePlot:
 
+class BasePlot:
     def __init__(self):
         """
         Create a plot.
 
         """
 
-        plt.close('all')
+        plt.close("all")
 
         self.fig = plt.figure()
 
@@ -27,19 +28,16 @@ class BasePlot:
 
         """
 
-        self.fig.savefig(filename, bbox_inches='tight')
+        self.fig.savefig(filename, bbox_inches="tight")
+
 
 class Pages:
-
     def __init__(self, filename):
-        
         self.pdf = PdfPages(filename)
 
     def add_plot(self):
-            
         self.pdf.savefig()
-        plt.close('all')
+        plt.close("all")
 
     def close(self):
-
         self.pdf.close()
