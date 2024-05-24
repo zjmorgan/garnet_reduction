@@ -9,6 +9,7 @@ dependencies:
   - scipy
   - matplotlib
   - pycifrw
+  - pre-commit
   - h5py
   - lmfit
   - mantidworkbench

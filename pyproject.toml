@@ -40,12 +40,11 @@ exclude = ["tests*"]
 [tool.setuptools.package-data]
 "*" = ["*.yml","*.yaml","*.ini"]
 
-[tool.pylint]
-max-line-length = 80
-disable = ["too-many-locals",
-           "too-many-statements",
-           "too-many-instance-attributes",
-           "too-many-arguments",
-           "duplicate-code"
-]
-extension-pkg-whitelist = ["PyQt5"]
+[tool.ruff]
+line-length = 120
+select = ["A", "ARG","ASYNC","BLE","C90", "D", "E", "F", "I", "N", "UP032", "W"]
+ignore = ["D203", # conflict with D211
+          "D213", # conflict with D212
+          "ANN201", "D400", "D401", "D415", # Unnecessary
+          "ARG002", "N802", "N803","N806", "D100","D101","D102","D103", "D104","D107","D417" # put it back in the future
+          ]

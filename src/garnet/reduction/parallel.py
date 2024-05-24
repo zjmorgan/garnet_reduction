@@ -1,24 +1,21 @@
+import multiprocessing
 import os
 
-import multiprocessing
-multiprocessing.set_start_method('spawn', force=True)
-
 import numpy as np
-
 from mantid import config
-config['Q.convention'] = 'Crystallography'
+
+multiprocessing.set_start_method("spawn", force=True)
+config["Q.convention"] = "Crystallography"
+
 
 class ParallelTasks:
-
     def __init__(self, function, combine=None):
-
         self.function = function
         self.combine = combine
         self.results = None
 
     def run_tasks(self, plan, n_proc):
-        """
-        Run parallel tasks with processing pool.
+        """Run parallel tasks with processing pool.
 
         Parameters
         ----------
@@ -28,41 +25,40 @@ class ParallelTasks:
             Number of processes.
 
         """
-
-        runs = plan['Runs']
+        runs = plan["Runs"]
 
         split = [split.tolist() for split in np.array_split(runs, n_proc)]
 
         join_args = [(plan, s, proc) for proc, s in enumerate(split)]
 
-        config['MultiThreaded.MaxCores'] == '1'
-        os.environ['OPENBLAS_NUM_THREADS'] = '1'
-        os.environ['MKL_NUM_THREADS'] = '1'
-        os.environ['NUMEXPR_NUM_THREADS'] = '1'
-        os.environ['OMP_NUM_THREADS'] = '1'
-        os.environ['TBB_THREAD_ENABLED'] = '0'
+        config["MultiThreaded.MaxCores"] == "1"
+        os.environ["OPENBLAS_NUM_THREADS"] = "1"
+        os.environ["MKL_NUM_THREADS"] = "1"
+        os.environ["NUMEXPR_NUM_THREADS"] = "1"
+        os.environ["OMP_NUM_THREADS"] = "1"
+        os.environ["TBB_THREAD_ENABLED"] = "0"
 
-        with multiprocessing.get_context('spawn').Pool(n_proc) as pool:
+        with multiprocessing.get_context("spawn").Pool(n_proc) as pool:
             self.results = pool.starmap(self.safe_function_wrapper, join_args)
             pool.close()
             pool.join()
 
-        config['MultiThreaded.MaxCores'] == '4'
-        os.environ.pop('OPENBLAS_NUM_THREADS')
-        os.environ.pop('MKL_NUM_THREADS')
-        os.environ.pop('NUMEXPR_NUM_THREADS')
-        os.environ.pop('OMP_NUM_THREADS')
-        os.environ.pop('TBB_THREAD_ENABLED')
+        config["MultiThreaded.MaxCores"] == "4"
+        os.environ.pop("OPENBLAS_NUM_THREADS")
+        os.environ.pop("MKL_NUM_THREADS")
+        os.environ.pop("NUMEXPR_NUM_THREADS")
+        os.environ.pop("OMP_NUM_THREADS")
+        os.environ.pop("TBB_THREAD_ENABLED")
 
         if self.combine is not None:
             self.combine(plan, self.results)
 
     def safe_function_wrapper(self, *args, **kwargs):
-
         try:
             return self.function(*args, **kwargs)
         except Exception as e:
-            print('Exception in worker function: {}'.format(e))
+            print(f"Exception in worker function: {e}")
             import traceback
+
             traceback.print_exc()
             raise

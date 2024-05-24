@@ -1,41 +1,41 @@
-from mantid.simpleapi import (SelectCellWithForm,
-                              ShowPossibleCells,
-                              TransformHKL,
-                              CalculatePeaksHKL,
-                              IndexPeaks,
-                              FindUBUsingFFT,
-                              FindUBUsingLatticeParameters,
-                              FindUBUsingIndexedPeaks,
-                              OptimizeLatticeForCellType,
-                              CalculateUMatrix,
-                              HasUB,
-                              SetUB,
-                              LoadIsawUB,
-                              SaveIsawUB,
-                              CopySample,
-                              mtd)
-
-from mantid.geometry import PointGroupFactory
-from mantid.utils.logging  import capture_logs
-
 import numpy as np
-
-import scipy.spatial
 import scipy.optimize
+import scipy.spatial
+from mantid.geometry import PointGroupFactory
+from mantid.simpleapi import (
+    CalculatePeaksHKL,
+    CalculateUMatrix,
+    CopySample,
+    FindUBUsingFFT,
+    FindUBUsingIndexedPeaks,
+    FindUBUsingLatticeParameters,
+    HasUB,
+    IndexPeaks,
+    LoadIsawUB,
+    OptimizeLatticeForCellType,
+    SaveIsawUB,
+    SelectCellWithForm,
+    SetUB,
+    ShowPossibleCells,
+    TransformHKL,
+    mtd,
+)
+from mantid.utils.logging import capture_logs
 
-lattice_group = {'Triclinic': '-1',
-                 'Monoclinic': '2/m',
-                 'Orthorhombic': 'mmm',
-                 'Tetragonal': '4/mmm',
-                 'Rhombohedral': '-3m',
-                 'Hexagonal': '6/mmm',
-                 'Cubic': 'm-3m'}
+lattice_group = {
+    "Triclinic": "-1",
+    "Monoclinic": "2/m",
+    "Orthorhombic": "mmm",
+    "Tetragonal": "4/mmm",
+    "Rhombohedral": "-3m",
+    "Hexagonal": "6/mmm",
+    "Cubic": "m-3m",
+}
+
 
 class UBModel:
-
     def __init__(self, peaks):
-        """
-        Tools for working with peaks and UB.
+        """Tools for working with peaks and UB.
 
         Parameters
         ----------
@@ -43,20 +43,14 @@ class UBModel:
             Table of peaks.
 
         """
-
         self.peaks = mtd[peaks]
 
     def has_UB(self):
-        """
-        Check if peaks table has a UB determined.
-
-        """
-
+        """Check if peaks table has a UB determined."""
         return HasUB(Workspace=self.peaks)
 
     def save_UB(self, filename):
-        """
-        Save UB to file.
+        """Save UB to file.
 
         Parameters
         ----------
@@ -64,12 +58,10 @@ class UBModel:
             Name of UB file with extension .mat.
 
         """
-
         SaveIsawUB(InputWorkspace=self.peaks, Filename=filename)
 
     def load_UB(self, filename):
-        """
-        Load UB from file.
+        """Load UB from file.
 
         Parameters
         ----------
@@ -77,12 +69,10 @@ class UBModel:
             Name of UB file with extension .mat.
 
         """
-
         LoadIsawUB(InputWorkspace=self.peaks, Filename=filename)
 
     def determine_UB_with_niggli_cell(self, min_d, max_d, tol=0.1):
-        """
-        Determine UB with primitive lattice using min/max lattice constant.
+        """Determine UB with primitive lattice using min/max lattice constant.
 
         Parameters
         ----------
@@ -94,21 +84,10 @@ class UBModel:
             Indexing tolerance. The default is 0.1.
 
         """
+        FindUBUsingFFT(PeaksWorkspace=self.peaks, MinD=min_d, MaxD=max_d, Tolerance=tol)
 
-        FindUBUsingFFT(PeaksWorkspace=self.peaks,
-                       MinD=min_d,
-                       MaxD=max_d,
-                       Tolerance=tol)
-
-    def determine_UB_with_lattice_parameters(self, a,
-                                                   b,
-                                                   c,
-                                                   alpha,
-                                                   beta,
-                                                   gamma,
-                                                   tol=0.1):
-        """
-        Determine UB with prior known lattice parameters.
+    def determine_UB_with_lattice_parameters(self, a, b, c, alpha, beta, gamma, tol=0.1):
+        """Determine UB with prior known lattice parameters.
 
         Parameters
         ----------
@@ -120,19 +99,19 @@ class UBModel:
             Indexing tolerance. The default is 0.1.
 
         """
-
-        FindUBUsingLatticeParameters(PeaksWorkspace=self.peaks,
-                                     a=a,
-                                     b=b,
-                                     c=c,
-                                     alpha=alpha,
-                                     beta=beta,
-                                     gamma=gamma,
-                                     Tolerance=tol)
+        FindUBUsingLatticeParameters(
+            PeaksWorkspace=self.peaks,
+            a=a,
+            b=b,
+            c=c,
+            alpha=alpha,
+            beta=beta,
+            gamma=gamma,
+            Tolerance=tol,
+        )
 
     def refine_UB_without_constraints(self, tol=0.1, sat_tol=None):
-        """
-        Refine UB with unconstrained lattice parameters.
+        """Refine UB with unconstrained lattice parameters.
 
         Parameters
         ----------
@@ -142,16 +121,12 @@ class UBModel:
             Satellite indexing tolerance. The default is None.
 
         """
-
         tol_for_sat = sat_tol if sat_tol is not None else tol
 
-        FindUBUsingIndexedPeaks(PeaksWorkspace=self.peaks,
-                                Tolerance=tol,
-                                ToleranceForSatellite=tol_for_sat)
+        FindUBUsingIndexedPeaks(PeaksWorkspace=self.peaks, Tolerance=tol, ToleranceForSatellite=tol_for_sat)
 
     def refine_UB_with_constraints(self, cell, tol=0.1):
-        """
-        Refine UB with constraints corresponding to lattice system.
+        """Refine UB with constraints corresponding to lattice system.
 
         +----------------+---------------+----------------------+
         | Lattice system | Lengths       | Angles               |
@@ -179,15 +154,10 @@ class UBModel:
             Indexing tolerance. The default is 0.1.
 
         """
-
-        OptimizeLatticeForCellType(PeaksWorkspace=self.peaks,
-                                   CellType=cell,
-                                   Apply=True,
-                                   Tolerance=tol)
+        OptimizeLatticeForCellType(PeaksWorkspace=self.peaks, CellType=cell, Apply=True, Tolerance=tol)
 
     def refine_U_only(self, a, b, c, alpha, beta, gamma):
-        """
-        Refine the U orientation only.
+        """Refine the U orientation only.
 
         Parameters
         ----------
@@ -197,18 +167,18 @@ class UBModel:
             Lattice angles in degrees.
 
         """
-
-        CalculateUMatrix(PeaksWorkspace=self.peaks,
-                         a=a,
-                         b=b,
-                         c=c,
-                         alpha=alpha,
-                         beta=beta,
-                         gamma=gamma)
+        CalculateUMatrix(
+            PeaksWorkspace=self.peaks,
+            a=a,
+            b=b,
+            c=c,
+            alpha=alpha,
+            beta=beta,
+            gamma=gamma,
+        )
 
     def select_cell(self, number, tol=0.1):
-        """
-        Transform to conventional cell using form number.
+        """Transform to conventional cell using form number.
 
         Parameters
         ----------
@@ -218,15 +188,10 @@ class UBModel:
             Indexing tolerance. The default is 0.1.
 
         """
-
-        SelectCellWithForm(PeaksWorkspace=self.peaks,
-                           FormNumber=number,
-                           Apply=True,
-                           Tolerance=tol)
+        SelectCellWithForm(PeaksWorkspace=self.peaks, FormNumber=number, Apply=True, Tolerance=tol)
 
     def possible_convetional_cells(self, max_error=0.2, permutations=True):
-        """
-        List possible conventional cells.
+        """List possible conventional cells.
 
         Parameters
         ----------
@@ -241,22 +206,21 @@ class UBModel:
             List of form numbers.
 
         """
-
-        with capture_logs(level='notice') as logs:
-
-            ShowPossibleCells(PeaksWorkspace=self.peaks,
-                              MaxScalarError=max_error,
-                              AllowPermuations=permutations,
-                              BestOnly=False)
+        with capture_logs(level="notice") as logs:
+            ShowPossibleCells(
+                PeaksWorkspace=self.peaks,
+                MaxScalarError=max_error,
+                AllowPermuations=permutations,
+                BestOnly=False,
+            )
 
             vals = logs.getvalue()
-            vals = [val for val in vals.split('\n') if val.startswith('Form')]
+            vals = [val for val in vals.split("\n") if val.startswith("Form")]
 
             return vals
 
     def transform_lattice(self, transform, tol=0.1):
-        """
-        Apply a cell transformation to the lattice.
+        """Apply a cell transformation to the lattice.
 
         Parameters
         ----------
@@ -266,16 +230,12 @@ class UBModel:
             Indexing tolerance. The default is 0.1.
 
         """
+        hkl_trans = ",".join(["{},{},{}".format(*row) for row in transform])
 
-        hkl_trans = ','.join(['{},{},{}'.format(*row) for row in transform])
-
-        TransformHKL(PeaksWorkspace=self.peaks,
-                     Tolerance=tol,
-                     HKLTransform=hkl_trans)
+        TransformHKL(PeaksWorkspace=self.peaks, Tolerance=tol, HKLTransform=hkl_trans)
 
     def generate_lattice_transforms(self, cell):
-        """
-        Obtain possible transforms compatabile with a unit cell lattice.
+        """Obtain possible transforms compatabile with a unit cell lattice.
 
         Parameters
         ----------
@@ -288,7 +248,6 @@ class UBModel:
             Transform dictionary with symmetry operation as key.
 
         """
-
         symbol = lattice_group[cell]
 
         pg = PointGroupFactory.createPointGroup(symbol)
@@ -299,20 +258,22 @@ class UBModel:
         for symop in pg.getSymmetryOperations():
             T = np.column_stack([symop.transformHKL(vec) for vec in coords])
             if np.linalg.det(T) > 0:
-                name = '{}: '.format(symop.getOrder())+symop.getIdentifier()
+                name = f"{symop.getOrder()}: " + symop.getIdentifier()
                 transform[name] = T.tolist()
 
-        return {key:transform[key] for key in sorted(transform.keys())}
+        return {key: transform[key] for key in sorted(transform.keys())}
 
-    def index_peaks(self, tol=0.1,
-                          sat_tol=None,
-                          mod_vec_1=[0,0,0],
-                          mod_vec_2=[0,0,0],
-                          mod_vec_3=[0,0,0],
-                          max_order=0,
-                          cross_terms=False):
-        """
-        Index the peaks and calculate the lattice parameter uncertainties.
+    def index_peaks(
+        self,
+        tol=0.1,
+        sat_tol=None,
+        mod_vec_1=[0, 0, 0],
+        mod_vec_2=[0, 0, 0],
+        mod_vec_3=[0, 0, 0],
+        max_order=0,
+        cross_terms=False,
+    ):
+        """Index the peaks and calculate the lattice parameter uncertainties.
 
         Parameters
         ----------
@@ -333,35 +294,30 @@ class UBModel:
             Result of indexing including number indexed and errors.
 
         """
-
         tol_for_sat = sat_tol if sat_tol is not None else tol
 
-        indexing = IndexPeaks(PeaksWorkspace=self.peaks,
-                              Tolerance=tol,
-                              ToleranceForSatellite=tol_for_sat,
-                              RoundHKLs=True,
-                              CommonUBForAll=True,
-                              ModVector1=mod_vec_1,
-                              ModVector2=mod_vec_2,
-                              ModVector3=mod_vec_3,
-                              MaxOrder=max_order,
-                              CrossTerms=cross_terms,
-                              SaveModulationInfo=True)
+        indexing = IndexPeaks(
+            PeaksWorkspace=self.peaks,
+            Tolerance=tol,
+            ToleranceForSatellite=tol_for_sat,
+            RoundHKLs=True,
+            CommonUBForAll=True,
+            ModVector1=mod_vec_1,
+            ModVector2=mod_vec_2,
+            ModVector3=mod_vec_3,
+            MaxOrder=max_order,
+            CrossTerms=cross_terms,
+            SaveModulationInfo=True,
+        )
 
         return indexing
 
     def calculate_hkl(self):
-        """
-        Calculate hkl values without rounding.
-
-        """
-
-        CalculatePeaksHKL(PeaksWorkspace=self.peaks,
-                          OverWrite=True)
+        """Calculate hkl values without rounding."""
+        CalculatePeaksHKL(PeaksWorkspace=self.peaks, OverWrite=True)
 
     def copy_UB(self, workspace):
-        """
-        Copy UB to another workspace.
+        """Copy UB to another workspace.
 
         Parameters
         ----------
@@ -369,20 +325,19 @@ class UBModel:
             Target workspace to copy the UB to.
 
         """
-
-        CopySample(InputWorkspace=self.peak,
-                   OutputWorkspace=workspace,
-                   CopyName=False,
-                   CopyMaterial=False,
-                   CopyEnvironment=False,
-                   CopyShape=False)
+        CopySample(
+            InputWorkspace=self.peak,
+            OutputWorkspace=workspace,
+            CopyName=False,
+            CopyMaterial=False,
+            CopyEnvironment=False,
+            CopyShape=False,
+        )
 
 
 class Optimization:
-
     def __init__(self, peaks):
-        """
-        Optimize lattice and orientation using nonlinear least squares.
+        """Optimize lattice and orientation using nonlinear least squares.
 
         Parameters
         ----------
@@ -390,11 +345,9 @@ class Optimization:
             Name of peaks workspace to perform constrained UB optimization.
 
         """
-
         Q, hkl = [], []
 
         for pk in mtd[peaks]:
-
             hkl.append(pk.getHKL())
             Q.append(pk.getQSampleFrame())
 
@@ -403,8 +356,7 @@ class Optimization:
         self.peaks = peaks
 
     def get_lattice_parameters(self):
-        """
-        Current lattice parameters.
+        """Current lattice parameters.
 
         Returns
         -------
@@ -414,9 +366,7 @@ class Optimization:
             Lattice angles in degrees.
 
         """
-
         if mtd.doesExist(self.peaks):
-
             ol = mtd[self.peaks].sample().getOrientedLattice()
 
             a, b, c = ol.a(), ol.b(), ol.c()
@@ -425,8 +375,7 @@ class Optimization:
             return a, b, c, alpha, beta, gamma
 
     def get_orientation_angles(self):
-        """
-        Current orientation angles.
+        """Current orientation angles.
 
         Returns
         -------
@@ -438,16 +387,14 @@ class Optimization:
             Rotation angle in radians.
 
         """
-
         if mtd.doesExist(self.peaks):
-
             U = mtd[self.peaks].sample().getOrientedLattice().getU()
 
-            omega = np.arccos((np.trace(U)-1)/2)
+            omega = np.arccos((np.trace(U) - 1) / 2)
 
             val, vec = np.linalg.eig(U)
 
-            ux, uy, uz = vec[:,np.argwhere(np.isclose(val, 1))[0][0]].real
+            ux, uy, uz = vec[:, np.argwhere(np.isclose(val, 1))[0][0]].real
 
             theta = np.arccos(uz)
             phi = np.arctan2(uy, ux)
@@ -455,74 +402,68 @@ class Optimization:
             return phi, theta, omega
 
     def U_matrix(self, phi, theta, omega):
-
-        u0 = np.cos(phi)*np.sin(theta)
-        u1 = np.sin(phi)*np.sin(theta)
+        u0 = np.cos(phi) * np.sin(theta)
+        u1 = np.sin(phi) * np.sin(theta)
         u2 = np.cos(theta)
 
-        w = omega*np.array([u0,u1,u2])
+        w = omega * np.array([u0, u1, u2])
 
         U = scipy.spatial.transform.Rotation.from_rotvec(w).as_matrix()
 
         return U
 
     def B_matrix(self, a, b, c, alpha, beta, gamma):
-
         alpha, beta, gamma = np.deg2rad([alpha, beta, gamma])
 
-        G = np.array([[a**2, a*b*np.cos(gamma), a*c*np.cos(beta)],
-                      [b*a*np.cos(gamma), b**2, b*c*np.cos(alpha)],
-                      [c*a*np.cos(beta), c*b*np.cos(alpha), c**2]])
+        G = np.array(
+            [
+                [a**2, a * b * np.cos(gamma), a * c * np.cos(beta)],
+                [b * a * np.cos(gamma), b**2, b * c * np.cos(alpha)],
+                [c * a * np.cos(beta), c * b * np.cos(alpha), c**2],
+            ]
+        )
 
         B = scipy.linalg.cholesky(np.linalg.inv(G), lower=False)
 
         return B
 
     def cubic(self, x):
-
         a, *params = x
 
         return (a, a, a, 90, 90, 90, *params)
 
     def rhombohedral(self, x):
-
         a, alpha, *params = x
 
         return (a, a, a, alpha, alpha, alpha, *params)
 
     def tetragonal(self, x):
-
         a, c, *params = x
 
         return (a, a, c, 90, 90, 90, *params)
 
     def hexagonal(self, x):
-
         a, c, *params = x
 
         return (a, a, c, 90, 90, 120, *params)
 
     def orthorhombic(self, x):
-
         a, b, c, *params = x
 
         return (a, b, c, 90, 90, 90, *params)
 
     def monoclinic(self, x):
-
         a, b, c, beta, *params = x
 
         return (a, b, c, 90, beta, 90, *params)
 
     def triclinic(self, x):
-
         a, b, c, alpha, beta, gamma, *params = x
 
         return (a, b, c, alpha, beta, gamma, *params)
 
     def residual(self, x, hkl, Q, fun):
-        """
-        Optimization residual function.
+        """Optimization residual function.
 
         Parameters
         ----------
@@ -541,19 +482,17 @@ class Optimization:
             Least squares residuals.
 
         """
-
         a, b, c, alpha, beta, gamma, phi, theta, omega = fun(x)
 
         B = self.B_matrix(a, b, c, alpha, beta, gamma)
         U = self.U_matrix(phi, theta, omega)
 
-        UB = np.dot(U,B)
+        UB = np.dot(U, B)
 
-        return (np.einsum('ij,lj->li', UB, hkl)*2*np.pi-Q).flatten()
+        return (np.einsum("ij,lj->li", UB, hkl) * 2 * np.pi - Q).flatten()
 
     def optimize_lattice(self, cell):
-        """
-        Refine the orientation and lattice parameters under constraints.
+        """Refine the orientation and lattice parameters under constraints.
 
         Parameters
         ----------
@@ -561,28 +500,30 @@ class Optimization:
             Lattice centering to constrain paramters.
 
         """
-
         if mtd.doesExist(self.peaks):
-
             a, b, c, alpha, beta, gamma = self.get_lattice_parameters()
 
             phi, theta, omega = self.get_orientation_angles()
 
-            fun_dict = {'Cubic': self.cubic,
-                        'Rhombohedral': self.rhombohedral,
-                        'Tetragonal': self.tetragonal,
-                        'Hexagonal': self.hexagonal,
-                        'Orthorhombic': self.orthorhombic,
-                        'Monoclinic': self.monoclinic,
-                        'Triclinic': self.triclinic}
+            fun_dict = {
+                "Cubic": self.cubic,
+                "Rhombohedral": self.rhombohedral,
+                "Tetragonal": self.tetragonal,
+                "Hexagonal": self.hexagonal,
+                "Orthorhombic": self.orthorhombic,
+                "Monoclinic": self.monoclinic,
+                "Triclinic": self.triclinic,
+            }
 
-            x0_dict = {'Cubic': (a, ),
-                       'Rhombohedral': (a, alpha),
-                       'Tetragonal': (a, c),
-                       'Hexagonal': (a, c),
-                       'Orthorhombic': (a, b, c),
-                       'Monoclinic': (a, b, c, beta),
-                       'Triclinic': (a, b, c, alpha, beta, gamma)}
+            x0_dict = {
+                "Cubic": (a,),
+                "Rhombohedral": (a, alpha),
+                "Tetragonal": (a, c),
+                "Hexagonal": (a, c),
+                "Orthorhombic": (a, b, c),
+                "Monoclinic": (a, b, c, beta),
+                "Triclinic": (a, b, c, alpha, beta, gamma),
+            }
 
             fun = fun_dict[cell]
             x0 = x0_dict[cell]
@@ -602,7 +543,7 @@ class Optimization:
             J = sol.jac
             cov = np.linalg.inv(J.T.dot(J))
 
-            chi2dof = np.sum(sol.fun**2)/(sol.fun.size-sol.x.size)
+            chi2dof = np.sum(sol.fun**2) / (sol.fun.size - sol.x.size)
             cov *= chi2dof
 
             sig = np.sqrt(np.diagonal(cov))
@@ -625,9 +566,4 @@ class Optimization:
 
             SetUB(Workspace=self.peaks, UB=UB)
 
-            mtd[self.peaks].sample().getOrientedLattice().setError(sig_a,
-                                                                   sig_b,
-                                                                   sig_c,
-                                                                   sig_alpha,
-                                                                   sig_beta,
-                                                                   sig_gamma)
+            mtd[self.peaks].sample().getOrientedLattice().setError(sig_a, sig_b, sig_c, sig_alpha, sig_beta, sig_gamma)
