@@ -47,7 +47,7 @@ class Integration:
         assert len(self.params["ModVec3"]) == 3
 
         assert self.params["MaxOrder"] >= 0
-        assert type(self.params["CrossTerms"]) is bool
+        assert isinstance(self.params["CrossTerms"], bool)
 
     @staticmethod
     def integrate_parallel(plan, runs, proc):
@@ -451,10 +451,10 @@ class Integration:
                 if vol_fract > 0.5:
                     int_intens, sig_noise = ellipsoid.intens_fit
 
-                    I = int_intens[-1]
-                    sigma = I / sig_noise[-1] if sig_noise[-1] > 0 else np.inf
+                    intensity = int_intens[-1]
+                    sigma = intensity / sig_noise[-1] if sig_noise[-1] > 0 else np.inf
 
-                    peak.set_peak_intensity(i, I, sigma)
+                    peak.set_peak_intensity(i, intensity, sigma)
                     peak.set_background(i, *ellipsoid.bkg)
 
                     plot = PeakPlot(fitting)

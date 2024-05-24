@@ -82,7 +82,7 @@ def test_integration_plan():
     assert params["ModVec2"] == [0, 0, 0]
     assert params["ModVec3"] == [0, 0, 0]
     assert params["MaxOrder"] == 0
-    assert params["CrossTerms"] == False
+    assert params["CrossTerms"] is False
     assert params["MinD"] == 0.7
     assert params["Radius"] == 0.25
 

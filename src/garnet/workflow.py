@@ -1,6 +1,12 @@
 import sys
 import os
 import concurrent.futures
+from mantid import config
+
+from garnet.reduction.plan import ReductionPlan
+from garnet.reduction.parallel import ParallelTasks
+from garnet.reduction.integration import Integration
+from garnet.reduction.normalization import Normalization
 
 directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(directory)
@@ -8,14 +14,9 @@ sys.path.append(directory)
 directory = os.path.abspath(os.path.join(directory, ".."))
 sys.path.append(directory)
 
-from mantid import config
 
 config["Q.convention"] = "Crystallography"
 
-from garnet.reduction.plan import ReductionPlan
-from garnet.reduction.parallel import ParallelTasks
-from garnet.reduction.integration import Integration
-from garnet.reduction.normalization import Normalization
 
 inst_dict = {
     "corelli": "CORELLI",

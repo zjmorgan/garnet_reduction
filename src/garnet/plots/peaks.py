@@ -517,19 +517,21 @@ class PeakPlot(BasePlot):
 
         """
 
-        I = r"$I={}$ [arb. unit]"
-        I_sig = "$I/\sigma={:.1f}$"
+        intensity = r"$I={}$ [arb. unit]"
+        intensity_sig = "$I/\sigma={:.1f}$"
 
         title = (
-            I.format(self._sci_notation(intens[0])) + " " + I_sig.format(sig_noise[0])
+            intensity.format(self._sci_notation(intens[0]))
+            + " "
+            + intensity_sig.format(sig_noise[0])
         )
 
         self.prof.set_title(title)
-        self.proj[0].set_title(I.format(self._sci_notation(intens[1])))
-        self.proj[1].set_title(I_sig.format(sig_noise[1]))
+        self.proj[0].set_title(intensity.format(self._sci_notation(intens[1])))
+        self.proj[1].set_title(intensity_sig.format(sig_noise[1]))
 
-        self.ellip[0].set_title(I.format(self._sci_notation(intens[2])))
-        self.ellip[1].set_title(I_sig.format(sig_noise[2]))
+        self.ellip[0].set_title(intensity.format(self._sci_notation(intens[2])))
+        self.ellip[1].set_title(intensity_sig.format(sig_noise[2]))
 
     def add_peak_info(self, wavelength, angles, gon):
         """

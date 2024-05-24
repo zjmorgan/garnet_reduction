@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
+from matplotlib.backends.backend_pdf import PdfPages
 
 mplstyle.use("fast")
-
-from matplotlib.backends.backend_pdf import PdfPages
 
 
 class BasePlot:

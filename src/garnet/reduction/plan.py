@@ -97,7 +97,7 @@ class ReductionPlan:
 
         self.set_output(filename)
         runs = self.plan["Runs"]
-        if type(runs) is str:
+        if isinstance(runs, str):
             self.plan["Runs"] = self.runs_string_to_list(runs)
 
     def save_plan(self, filename):
@@ -114,7 +114,7 @@ class ReductionPlan:
         if self.plan is not None:
             self.set_output(filename)
             runs = self.plan["Runs"]
-            if type(runs) is list:
+            if isinstance(runs, list):
                 self.plan["Runs"] = self.runs_list_to_string(runs)
 
             save_YAML(self.plan, filename)
@@ -253,7 +253,7 @@ class ReductionPlan:
         inst_config = beamlines[instrument]
 
         wl = inst_config["Wavelength"]
-        min_d = max(wl) / 2 if type(wl) is list else wl / 2
+        min_d = max(wl) / 2 if isinstance(wl, list) else wl / 2
 
         params = {}
         params["Cell"] = "Triclinic"

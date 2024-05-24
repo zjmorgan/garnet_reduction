@@ -69,15 +69,15 @@ def test_radius_plot():
 
     r = np.linspace(0, r_cut, 51)
 
-    I = A * np.tanh((r / s) ** 3)
+    integration = A * np.tanh((r / s) ** 3)
 
     sphere = PeakSphere(r_cut)
 
-    radius = sphere.fit(r, I)
+    radius = sphere.fit(r, integration)
 
     I_fit, *vals = sphere.best_fit(r)
 
-    plot = RadiusPlot(r, I, I_fit)
+    plot = RadiusPlot(r, integration, I_fit)
 
     plot.add_sphere(radius, *vals)
 

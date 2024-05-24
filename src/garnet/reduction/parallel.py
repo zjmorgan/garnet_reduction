@@ -2,12 +2,12 @@ import os
 
 import multiprocessing
 
-multiprocessing.set_start_method("spawn", force=True)
 
 import numpy as np
 
 from mantid import config
 
+multiprocessing.set_start_method("spawn", force=True)
 config["Q.convention"] = "Crystallography"
 
 

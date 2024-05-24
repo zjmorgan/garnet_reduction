@@ -27,10 +27,10 @@ from mantid.kernel import V3D
 from mantid.dataobjects import PeakShapeEllipsoid
 
 from mantid import config
+import numpy as np
 
 config["Q.convention"] = "Crystallography"
 
-import numpy as np
 
 centering_reflection = {
     "P": "Primitive",
@@ -805,9 +805,13 @@ class PeakModel:
             mod_1 = ol.getModVec(0)
             mod_2 = ol.getModVec(1)
             mod_3 = ol.getModVec(2)
-            h, k, l, m, n, p = *hkl, *mnp
-            dh, dk, dl = m * np.array(mod_1) + n * np.array(mod_2) + p * np.array(mod_3)
-            d = ol.d(V3D(h + dh, k + dk, l + dl))
+            index_h, index_k, index_l, vector_m, vector_n, vector_p = *hkl, *mnp
+            dh, dk, dl = (
+                vector_m * np.array(mod_1)
+                + vector_n * np.array(mod_2)
+                + vector_p * np.array(mod_3)
+            )
+            d = ol.d(V3D(index_h + dh, index_k + dk, index_l + dl))
         else:
             d = peak.getDSpacing()
 

@@ -3,8 +3,6 @@ import os
 from mantid.simpleapi import mtd
 from mantid import config
 
-config["Q.convention"] = "Crystallography"
-
 import numpy as np
 
 from garnet.plots.base import Pages
@@ -12,6 +10,8 @@ from garnet.plots.volume import SlicePlot
 from garnet.reduction.data import DataModel
 from garnet.reduction.crystallography import space_point, point_laue
 from garnet.config.instruments import beamlines
+
+config["Q.convention"] = "Crystallography"
 
 
 class Normalization:
@@ -36,7 +36,7 @@ class Normalization:
         assert np.abs(np.linalg.det(self.params["Projections"])) > 0
 
         assert len(self.params["Bins"]) == 3
-        assert all([type(val) is int for val in self.params["Bins"]])
+        assert all([isinstance(val, int) for val in self.params["Bins"]])
         assert (np.array(self.params["Bins"]) > 0).all()
         assert np.prod(self.params["Bins"]) < 1001**3  # memory usage limit
 

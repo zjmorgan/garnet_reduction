@@ -102,11 +102,11 @@ def test_sphere():
 
     r = np.linspace(0, r_cut, 51)
 
-    I = A * np.tanh((r / s) ** 3)
+    integration = A * np.tanh((r / s) ** 3)
 
     sphere = PeakSphere(r_cut)
 
-    radius = sphere.fit(r, I)
+    radius = sphere.fit(r, integration)
 
     assert np.tanh((radius / s) ** 3) > 0.95
     assert radius < r_cut

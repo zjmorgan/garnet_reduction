@@ -54,7 +54,7 @@ config["Q.convention"] = "Crystallography"
 
 
 def DataModel(instrument_config):
-    if type(instrument_config["Wavelength"]) is list:
+    if isinstance(instrument_config["Wavelength"], list):
         return LaueData(instrument_config)
     else:
         return MonochromaticData(instrument_config)
@@ -92,8 +92,8 @@ class BaseDataModel:
                 gon_ind += 1
 
         wl = instrument_config["Wavelength"]
-        self.wavelength_band = wl if type(wl) is list else [0.98 * wl, 1.02 * wl]
-        self.wavelength = np.mean(wl) if type(wl) is list else wl
+        self.wavelength_band = wl if isinstance(wl, list) else [0.98 * wl, 1.02 * wl]
+        self.wavelength = np.mean(wl) if isinstance(wl, list) else wl
 
         self.k_min = 2 * np.pi / np.max(self.wavelength_band)
         self.k_max = 2 * np.pi / np.min(self.wavelength_band)
@@ -130,7 +130,7 @@ class BaseDataModel:
         elif instrument == "CORELLI":
             self.elastic = plan.get("Elastic")
             self.time_offset = plan.get("TimeOffset")
-            if self.elastic == True and self.time_offset is None:
+            if self.elastic and self.time_offset is None:
                 raw_path = raw_path.replace("nexus/", "shared/autoreduce")
                 raw_file = raw_file.replace(".nxs", "_elastic.nxs")
 
@@ -189,7 +189,7 @@ class BaseDataModel:
 
         """
 
-        if type(runs) is int:
+        if isinstance(runs, int):
             runs = [runs]
 
         filename = self.raw_file_path
@@ -906,7 +906,7 @@ class LaueData(BaseDataModel):
 
         Load(Filename=filenames, OutputWorkspace=event_name)
 
-        if self.elastic == True and self.time_offset is not None:
+        if self.elastic and self.time_offset is not None:
             CopyInstrumentParameters(
                 InputWorkspace=self.ref_inst, OutputWorkspace=event_name
             )

@@ -3,13 +3,13 @@ import os
 from mantid.simpleapi import mtd
 from mantid import config
 
-config["Q.convention"] = "Crystallography"
-
 import numpy as np
 
 from garnet.reduction.data import DataModel
 from garnet.reduction.crystallography import space_point, point_laue
 from garnet.config.instruments import beamlines
+
+config["Q.convention"] = "Crystallography"
 
 
 class Normalization:
