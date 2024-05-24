@@ -41,9 +41,7 @@ exclude = ["tests*"]
 "*" = ["*.yml","*.yaml","*.ini"]
 
 [tool.ruff]
-line-length = 119
-
-[tool.ruff.lint]
+line-length = 120
 select = ["A", "ARG","ASYNC","BLE","C90", "D", "E", "F", "I", "N", "UP032", "W"]
 ignore = ["D203", # conflict with D211
           "D213", # conflict with D212
