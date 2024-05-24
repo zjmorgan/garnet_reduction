@@ -1,11 +1,11 @@
 import os
-import tempfile
 import shutil
 import subprocess
+import tempfile
 
-from garnet.reduction.plan import ReductionPlan
-from garnet.reduction.normalization import Normalization
 from garnet.config.instruments import beamlines
+from garnet.reduction.normalization import Normalization
+from garnet.reduction.plan import ReductionPlan
 
 benchmark = "shared/benchmark/norm"
 
@@ -58,7 +58,7 @@ def test_corelli():
         name = instrument_config["Name"]
         baseline_path = os.path.join("/", facility, name, benchmark)
 
-        subprocess.run(command)
+        subprocess.run(command, check=False)
 
         if os.path.exists(baseline_path):
             shutil.rmtree(baseline_path)
@@ -84,7 +84,7 @@ def test_topaz():
         name = instrument_config["Name"]
         baseline_path = os.path.join("/", facility, name, benchmark)
 
-        subprocess.run(command)
+        subprocess.run(command, check=False)
 
         if os.path.exists(baseline_path):
             shutil.rmtree(baseline_path)
@@ -110,7 +110,7 @@ def test_demand():
         name = instrument_config["Name"]
         baseline_path = os.path.join("/", facility, name, benchmark)
 
-        subprocess.run(command)
+        subprocess.run(command, check=False)
 
         if os.path.exists(baseline_path):
             shutil.rmtree(baseline_path)
@@ -136,7 +136,7 @@ def test_wand2():
         name = instrument_config["Name"]
         baseline_path = os.path.join("/", facility, name, benchmark)
 
-        subprocess.run(command)
+        subprocess.run(command, check=False)
 
         if os.path.exists(baseline_path):
             shutil.rmtree(baseline_path)

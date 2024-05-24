@@ -1,13 +1,12 @@
 import os
 
-from mantid.simpleapi import mtd
-from mantid import config
-
 import numpy as np
+from mantid import config
+from mantid.simpleapi import mtd
 
-from garnet.reduction.data import DataModel
-from garnet.reduction.crystallography import space_point, point_laue
 from garnet.config.instruments import beamlines
+from garnet.reduction.crystallography import point_laue, space_point
+from garnet.reduction.data import DataModel
 
 config["Q.convention"] = "Crystallography"
 
@@ -43,22 +42,18 @@ class Normalization:
     @staticmethod
     def normalize_parallel(plan, runs, proc):
         plan["Runs"] = runs
-        plan["OutputName"] += "_p{}".format(proc)
+        plan["OutputName"] += f"_p{proc}"
 
         instance = Normalization(plan)
 
         return instance.normalize()
 
     def normalize(self):
-        output_file = os.path.join(
-            self.plan["OutputPath"], "normalization", self.plan["OutputName"] + ".nxs"
-        )
+        output_file = os.path.join(self.plan["OutputPath"], "normalization", self.plan["OutputName"] + ".nxs")
 
         data = DataModel(beamlines[self.plan["Instrument"]])
 
-        data.load_generate_normalization(
-            self.plan["VanadiumFile"], self.plan.get("FluxFile")
-        )
+        data.load_generate_normalization(self.plan["VanadiumFile"], self.plan.get("FluxFile"))
 
         runs = self.plan["Runs"]
 
@@ -85,9 +80,22 @@ class Normalization:
                     self.params["Bins"],
                     symmetry=self.params.get("Symmetry"),
                 )
+        elif self.plan["Instrument"] == "WAND²":
+            data.load_data("md", self.plan["IPTS"], runs)
+
+            data.load_clear_UB(self.plan["UBFile"], "md")
+
+            data.normalize_to_hkl(
+                "md",
+                self.params["Projections"],
+                self.params["Extents"],
+                self.params["Bins"],
+                symmetry=self.params.get("Symmetry"),
+            )
+
         else:
-            if self.plan["Instrument"] == "WAND²":
-                data.load_data("md", self.plan["IPTS"], runs)
+            for run in runs:
+                data.load_data("md", self.plan["IPTS"], run)
 
                 data.load_clear_UB(self.plan["UBFile"], "md")
 
@@ -98,20 +106,6 @@ class Normalization:
                     self.params["Bins"],
                     symmetry=self.params.get("Symmetry"),
                 )
-
-            else:
-                for run in runs:
-                    data.load_data("md", self.plan["IPTS"], run)
-
-                    data.load_clear_UB(self.plan["UBFile"], "md")
-
-                    data.normalize_to_hkl(
-                        "md",
-                        self.params["Projections"],
-                        self.params["Extents"],
-                        self.params["Bins"],
-                        symmetry=self.params.get("Symmetry"),
-                    )
 
         data_file = self.get_file(output_file, "data")
         norm_file = self.get_file(output_file, "norm")
@@ -148,9 +142,7 @@ class Normalization:
         return instance.combine(files)
 
     def combine(self, files):
-        output_file = os.path.join(
-            self.plan["OutputPath"], "normalization", self.plan["OutputName"] + ".nxs"
-        )
+        output_file = os.path.join(self.plan["OutputPath"], "normalization", self.plan["OutputName"] + ".nxs")
 
         data = DataModel(beamlines[self.plan["Instrument"]])
 

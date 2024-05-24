@@ -7,18 +7,13 @@ mplstyle.use("fast")
 
 class BasePlot:
     def __init__(self):
-        """
-        Create a plot.
-
-        """
-
+        """Create a plot."""
         plt.close("all")
 
         self.fig = plt.figure()
 
     def save_plot(self, filename):
-        """
-        Save plot.
+        """Save plot.
 
         Parameters
         ----------
@@ -26,7 +21,6 @@ class BasePlot:
             Path to file.
 
         """
-
         self.fig.savefig(filename, bbox_inches="tight")
 
 

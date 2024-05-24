@@ -1,10 +1,9 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from matplotlib.transforms import Affine2D
 # from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
-
 import scipy.linalg
+from matplotlib.transforms import Affine2D
 
 from garnet.plots.base import BasePlot
 
@@ -34,7 +33,7 @@ class SlicePlot(BasePlot):
         z = axes[slice_ind]
         i = np.argmin(np.abs(z - value))
 
-        titles.append("{} = {:.4f}".format(labels[slice_ind], z[i]))
+        titles.append(f"{labels[slice_ind]} = {z[i]:.4f}")
 
         if slice_ind == 0:
             data = signal[i, :, :].T

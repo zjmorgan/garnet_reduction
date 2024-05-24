@@ -1,15 +1,14 @@
 import os
 
-from mantid.simpleapi import mtd
-from mantid import config
-
 import numpy as np
+from mantid import config
+from mantid.simpleapi import mtd
 
+from garnet.config.instruments import beamlines
 from garnet.plots.base import Pages
 from garnet.plots.volume import SlicePlot
+from garnet.reduction.crystallography import point_laue, space_point
 from garnet.reduction.data import DataModel
-from garnet.reduction.crystallography import space_point, point_laue
-from garnet.config.instruments import beamlines
 
 config["Q.convention"] = "Crystallography"
 
@@ -46,7 +45,7 @@ class Normalization:
     @staticmethod
     def normalize_parallel(plan, runs, proc):
         plan["Runs"] = runs
-        plan["OutputName"] += "_p{}".format(proc)
+        plan["OutputName"] += f"_p{proc}"
 
         instance = Normalization(plan)
 
@@ -71,9 +70,7 @@ class Normalization:
             for run in runs:
                 data.load_data("data", self.plan["IPTS"], run)
 
-                data.load_generate_normalization(
-                    self.plan["VanadiumFile"], self.plan.get("FluxFile")
-                )
+                data.load_generate_normalization(self.plan["VanadiumFile"], self.plan.get("FluxFile"))
 
                 data.apply_calibration(
                     "data",
@@ -100,9 +97,27 @@ class Normalization:
                     self.params["Bins"],
                     symmetry=self.params.get("Symmetry"),
                 )
+        elif self.plan["Instrument"] == "WAND²":
+            data.load_data("md", self.plan["IPTS"], runs, self.plan.get("Grouping"))
+
+            data.load_generate_normalization(self.plan["VanadiumFile"])
+
+            if self.plan["UBFile"] is not None:
+                data.load_clear_UB(self.plan["UBFile"], "md")
+
+            data.load_background(self.plan.get("BackgroundFile"), "md")
+
+            data.normalize_to_hkl(
+                "md",
+                self.params["Projections"],
+                self.params["Extents"],
+                self.params["Bins"],
+                symmetry=self.params.get("Symmetry"),
+            )
+
         else:
-            if self.plan["Instrument"] == "WAND²":
-                data.load_data("md", self.plan["IPTS"], runs, self.plan.get("Grouping"))
+            for run in runs:
+                data.load_data("md", self.plan["IPTS"], run, self.plan.get("Grouping"))
 
                 data.load_generate_normalization(self.plan["VanadiumFile"])
 
@@ -118,27 +133,6 @@ class Normalization:
                     self.params["Bins"],
                     symmetry=self.params.get("Symmetry"),
                 )
-
-            else:
-                for run in runs:
-                    data.load_data(
-                        "md", self.plan["IPTS"], run, self.plan.get("Grouping")
-                    )
-
-                    data.load_generate_normalization(self.plan["VanadiumFile"])
-
-                    if self.plan["UBFile"] is not None:
-                        data.load_clear_UB(self.plan["UBFile"], "md")
-
-                    data.load_background(self.plan.get("BackgroundFile"), "md")
-
-                    data.normalize_to_hkl(
-                        "md",
-                        self.params["Projections"],
-                        self.params["Extents"],
-                        self.params["Bins"],
-                        symmetry=self.params.get("Symmetry"),
-                    )
 
         UB_file = output_file.replace(".nxs", ".mat")
         data.save_UB(UB_file, "md")
@@ -163,8 +157,7 @@ class Normalization:
         return output_file
 
     def get_file(self, file, ws=""):
-        """
-        Update filename with identifier name and optional workspace name.
+        """Update filename with identifier name and optional workspace name.
 
         Parameters
         ----------
@@ -179,15 +172,13 @@ class Normalization:
             File with updated name for identifier and workspace name.
 
         """
-
         if len(ws) > 0:
             ws = "_" + ws
 
         return self.append_name(file).replace(".nxs", ws + ".nxs")
 
     def append_name(self, file):
-        """
-        Update filename with identifier name
+        """Update filename with identifier name
 
         Parameters
         ----------
@@ -200,21 +191,14 @@ class Normalization:
             File with updated name for identifier name.
 
         """
-
-        append = (
-            self.projection_name()
-            + self.extents_name()
-            + self.binning_name()
-            + self.symmetry_name()
-        )
+        append = self.projection_name() + self.extents_name() + self.binning_name() + self.symmetry_name()
 
         name, ext = os.path.splitext(file)
 
         return name + append + ext
 
     def extents_name(self):
-        """
-        Min/max pairs for each dimensional extents.
+        """Min/max pairs for each dimensional extents.
 
         `_[min_0,max_0]_[min_1,max_1]_[min_2,max_2]`
 
@@ -224,14 +208,12 @@ class Normalization:
             Underscore separated list.
 
         """
-
         extents = self.params.get("Extents")
 
         return "".join(["_[{},{}]".format(*extent) for extent in extents])
 
     def binning_name(self):
-        """
-        Bin size for each dimension.
+        """Bin size for each dimension.
 
         `_N0xN1xN2`
 
@@ -241,14 +223,13 @@ class Normalization:
             Cross separated integers.
 
         """
-
         bins = self.params.get("Bins")
 
         return "_" + "x".join(np.array(bins).astype(str).tolist())
 
     def symmetry_name(self):
-        """
-        Laue group name.
+        """Laue group name.
+
         Spaces are removed and slashes are replaced with underscore.
 
         Returns
@@ -257,7 +238,6 @@ class Normalization:
             None or Hermann-Mauguin point group symbol.
 
         """
-
         symmetry = self.params.get("Symmetry")
 
         name = "" if symmetry is None else "_" + symmetry.replace(" ", "")
@@ -265,8 +245,7 @@ class Normalization:
         return name.replace("/", "_")
 
     def projection_name(self):
-        """
-        Axes projections.
+        """Axes projections.
 
         Returns
         -------
@@ -274,7 +253,6 @@ class Normalization:
             Name of slices.
 
         """
-
         W = np.column_stack(self.params["Projections"])
 
         char_dict = {0: "0", 1: "{1}", -1: "-{1}"}
@@ -311,8 +289,7 @@ class Normalization:
         return instance.combine(files)
 
     def combine(self, files):
-        """
-        Merge data and normalization files.
+        """Merge data and normalization files.
 
         Parameters
         ----------
@@ -320,7 +297,6 @@ class Normalization:
             Files to be combined.
 
         """
-
         output_file = self.get_output_file()
         diag_file = self.get_diagnostic_file()
 
@@ -396,7 +372,7 @@ class Normalization:
 
                 if np.isclose(np.round(val, 4) % 1, 0):
                     name = labels[2].replace(" ", "")
-                    plot_name = "slice_{}.png".format(name)
+                    plot_name = f"slice_{name}.png"
                     plot.save_plot(os.path.join(plot_path, plot_name))
 
                 pdf.add_plot()
@@ -421,8 +397,7 @@ class Normalization:
             data.save_histograms(sub_output_file, "sub", sample_logs=True)
 
     def get_output_file(self):
-        """
-        Name of output file.
+        """Name of output file.
 
         Returns
         -------
@@ -430,16 +405,12 @@ class Normalization:
             Normalization output file.
 
         """
-
-        output_file = os.path.join(
-            self.plan["OutputPath"], "normalization", self.plan["OutputName"] + ".nxs"
-        )
+        output_file = os.path.join(self.plan["OutputPath"], "normalization", self.plan["OutputName"] + ".nxs")
 
         return output_file
 
     def get_plot_path(self):
-        """
-        Plot directory.
+        """Plot directory.
 
         Returns
         -------
@@ -447,12 +418,10 @@ class Normalization:
             Path name to save plots.
 
         """
-
         return os.path.join(self.plan["OutputPath"], "normalization", "plots")
 
     def get_diagnostic_file(self):
-        """
-        Diagnostic directory.
+        """Diagnostic directory.
 
         Returns
         -------
@@ -460,7 +429,6 @@ class Normalization:
             Path name to save diagnostics.
 
         """
-
         return os.path.join(
             self.plan["OutputPath"],
             "normalization/diagnostics",

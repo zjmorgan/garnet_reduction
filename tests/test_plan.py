@@ -1,9 +1,9 @@
 import os
 import tempfile
 
-from garnet.reduction.plan import ReductionPlan
 from garnet.reduction.integration import Integration
 from garnet.reduction.normalization import Normalization
+from garnet.reduction.plan import ReductionPlan
 
 filepath = os.path.dirname(os.path.abspath(__file__))
 

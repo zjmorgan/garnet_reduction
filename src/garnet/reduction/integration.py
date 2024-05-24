@@ -1,18 +1,19 @@
-from garnet.plots.peaks import RadiusPlot, PeakPlot
-from garnet.config.instruments import beamlines
-from garnet.reduction.ub import UBModel, Optimization, lattice_group
-from garnet.reduction.peaks import PeaksModel, PeakModel, centering_reflection
-from garnet.reduction.data import DataModel
-from lmfit import Minimizer, Parameters
-import scipy.spatial.transform
-import scipy.interpolate
-import scipy.integrate
-import scipy.special
-import numpy as np
 import os
 
-from mantid.simpleapi import mtd
+import numpy as np
+import scipy.integrate
+import scipy.interpolate
+import scipy.spatial.transform
+import scipy.special
+from lmfit import Minimizer, Parameters
 from mantid import config
+from mantid.simpleapi import mtd
+
+from garnet.config.instruments import beamlines
+from garnet.plots.peaks import PeakPlot, RadiusPlot
+from garnet.reduction.data import DataModel
+from garnet.reduction.peaks import PeakModel, PeaksModel, centering_reflection
+from garnet.reduction.ub import Optimization, UBModel, lattice_group
 
 config["Q.convention"] = "Crystallography"
 
@@ -52,7 +53,7 @@ class Integration:
     @staticmethod
     def integrate_parallel(plan, runs, proc):
         plan["Runs"] = runs
-        plan["OutputName"] += "_p{}".format(proc)
+        plan["OutputName"] += f"_p{proc}"
 
         data = DataModel(beamlines[plan["Instrument"]])
 
@@ -76,9 +77,7 @@ class Integration:
 
         runs = self.plan["Runs"]
 
-        data.load_generate_normalization(
-            self.plan["VanadiumFile"], self.plan["FluxFile"]
-        )
+        data.load_generate_normalization(self.plan["VanadiumFile"], self.plan["FluxFile"])
 
         grouping_file = diag_file.replace(".nxs", ".xml")
 
@@ -126,10 +125,10 @@ class Integration:
 
             diag_dir = os.path.dirname(diag_file)
 
-            md_file = os.path.join(diag_dir, "run#{}_data.nxs".format(run))
+            md_file = os.path.join(diag_dir, f"run#{run}_data.nxs")
             data.save_histograms(md_file, "md_corr", sample_logs=True)
 
-            pk_file = os.path.join(diag_dir, "run#{}_peaks.nxs".format(run))
+            pk_file = os.path.join(diag_dir, f"run#{run}_peaks.nxs")
             peaks.save_peaks(pk_file, "peaks")
 
         peaks.remove_weak_peaks("combine")
@@ -208,9 +207,7 @@ class Integration:
 
         else:
             for run in runs:
-                data.load_data(
-                    "data", self.plan["IPTS"], run, self.plan.get("Grouping")
-                )
+                data.load_data("data", self.plan["IPTS"], run, self.plan.get("Grouping"))
 
                 data.load_generate_normalization(self.plan["VanadiumFile"], "data")
 
@@ -240,9 +237,7 @@ class Integration:
                 peaks.convert_peaks("peaks")
 
                 if self.params["MaxOrder"] > 0:
-                    self.predict_satellite_peaks(
-                        "peaks", "md_data", lamda_min, lamda_max
-                    )
+                    self.predict_satellite_peaks("peaks", "md_data", lamda_min, lamda_max)
 
                     peaks.remove_duplicate_peaks("peaks")
 
@@ -251,7 +246,7 @@ class Integration:
         peaks.save_peaks(output_file, "combine")
 
         for ws in ["md_data", "md_corr", "norm"]:
-            file = output_file.replace(".nxs", "_{}.nxs".format(ws))
+            file = output_file.replace(".nxs", f"_{ws}.nxs")
             data.save_histograms(file, ws, sample_logs=True)
 
         mtd.clear()
@@ -270,7 +265,7 @@ class Integration:
             merge = []
 
             for file in files:
-                md_file = file.replace(".nxs", "_{}.nxs".format(ws))
+                md_file = file.replace(".nxs", f"_{ws}.nxs")
                 data.load_histograms(md_file, md_file)
                 merge.append(md_file)
                 os.remove(md_file)
@@ -281,7 +276,7 @@ class Integration:
                 peaks.load_peaks(file, "peaks")
                 peaks.combine_peaks("peaks", "combine")
                 os.remove(file)
-                md_file = output_file.replace(".nxs", "_{}.nxs".format(ws))
+                md_file = output_file.replace(".nxs", f"_{ws}.nxs")
                 data.save_histograms(md_file, ws, sample_logs=True)
 
         pk_file = output_file.replace(".nxs", "_pk.nxs")
@@ -312,8 +307,8 @@ class Integration:
         mtd.clear()
 
     def estimate_peak_size(self, peaks_ws, data_ws):
-        """
-        Integrate peaks with spherical envelope up to cutoff size.
+        """Integrate peaks with spherical envelope up to cutoff size.
+
         Estimates spherical envelope radius.
 
         Parameters
@@ -329,7 +324,6 @@ class Integration:
             Update cutoff radius.
 
         """
-
         peaks = self.peaks
 
         plot_path = self.get_plot_path()
@@ -355,8 +349,7 @@ class Integration:
         return r_cut
 
     def predict_satellite_peaks(self, peaks_ws, data_ws, lamda_min, lamda_max):
-        """
-        Locate satellite peaks from goniometer angles.
+        """Locate satellite peaks from goniometer angles.
 
         Parameters
         ----------
@@ -370,7 +363,6 @@ class Integration:
             Maximum wavelength.
 
         """
-
         peaks = self.peaks
 
         Rs = peaks.get_all_goniometer_matrices(data_ws)
@@ -391,8 +383,7 @@ class Integration:
             )
 
     def fit_peaks(self, peaks_ws, r_cut, rotation=False):
-        """
-        Integrate peaks.
+        """Integrate peaks.
 
         Parameters
         ----------
@@ -404,7 +395,6 @@ class Integration:
             Apply the projection along the rotation axis. Default is `False`.
 
         """
-
         data = self.data
 
         plot_path = self.get_plot_path()
@@ -427,9 +417,7 @@ class Integration:
 
                 d, n, Q0, Q1, Q2 = data.normalize_to_Q_sample("md_data", extents, bins)
 
-                ellipsoid = PeakEllipsoid(
-                    *params, r_cut / 3, self.params["Radius"], rotation
-                )
+                ellipsoid = PeakEllipsoid(*params, r_cut / 3, self.params["Radius"], rotation)
 
                 params = ellipsoid.fit(Q0, Q1, Q2, d, n)
 
@@ -485,15 +473,12 @@ class Integration:
 
         bins = np.array([21, 21, 21])
 
-        extents = np.array(
-            [[c0 - dQ0, c0 + dQ0], [c1 - dQ1, c1 + dQ1], [c2 - dQ2, c2 + dQ2]]
-        )
+        extents = np.array([[c0 - dQ0, c0 + dQ0], [c1 - dQ1, c1 + dQ1], [c2 - dQ2, c2 + dQ2]])
 
         return bins, extents
 
     def roi(self, c0, c1, c2, r0, r1, r2, v0, v1, v2):
-        """
-        Region extent and binning around a peak based on its initial shape.
+        """Region extent and binning around a peak based on its initial shape.
 
         Parameters
         ----------
@@ -512,7 +497,6 @@ class Integration:
             Limits of peak region of interest.
 
         """
-
         W = np.column_stack([v0, v1, v2])
         V = np.diag([r0**2, r1**2, r2**2])
 
@@ -536,8 +520,7 @@ class Integration:
             return instance.monochromatic_combine(files)
 
     def get_output_file(self):
-        """
-        Name of output file.
+        """Name of output file.
 
         Returns
         -------
@@ -545,16 +528,12 @@ class Integration:
             Integration output file.
 
         """
-
-        output_file = os.path.join(
-            self.plan["OutputPath"], "integration", self.plan["OutputName"] + ".nxs"
-        )
+        output_file = os.path.join(self.plan["OutputPath"], "integration", self.plan["OutputName"] + ".nxs")
 
         return output_file
 
     def get_plot_path(self):
-        """
-        Plot directory.
+        """Plot directory.
 
         Returns
         -------
@@ -562,12 +541,10 @@ class Integration:
             Path name to save plots.
 
         """
-
         return os.path.join(self.plan["OutputPath"], "integration", "plots")
 
     def get_diagnostic_file(self):
-        """
-        Diagnostic directory.
+        """Diagnostic directory.
 
         Returns
         -------
@@ -575,7 +552,6 @@ class Integration:
             Path name to save diagnostics.
 
         """
-
         return os.path.join(
             self.plan["OutputPath"],
             "integration/diagnostics",
@@ -592,10 +568,7 @@ class PeakSphere:
     def model(self, x, A, sigma):
         z = x / sigma
 
-        return A * (
-            scipy.special.erf(z / np.sqrt(2))
-            - np.sqrt(2 / np.pi) * z * np.exp(-0.5 * z**2)
-        )
+        return A * (scipy.special.erf(z / np.sqrt(2)) - np.sqrt(2 / np.pi) * z * np.exp(-0.5 * z**2))
 
     def residual(self, params, x, y):
         A = params["A"]
@@ -631,9 +604,7 @@ class PeakSphere:
 
 
 class PeakEllipsoid:
-    def __init__(
-        self, c0, c1, c2, r0, r1, r2, v0, v1, v2, delta, r_cut, rotation=False
-    ):
+    def __init__(self, c0, c1, c2, r0, r1, r2, v0, v1, v2, delta, r_cut, rotation=False):
         params = Parameters()
 
         self.params = params
@@ -675,9 +646,7 @@ class PeakEllipsoid:
 
         return u, v
 
-    def update_constraints(
-        self, c0, c1, c2, r0, r1, r2, phi, theta, omega, delta, r_cut
-    ):
+    def update_constraints(self, c0, c1, c2, r0, r1, r2, phi, theta, omega, delta, r_cut):
         self.params.add("r0", value=r0, min=0.2 * r_cut, max=r_cut)
         self.params.add("r1", value=r1, min=0.2 * r_cut, max=r_cut)
         self.params.add("r2", value=r2, min=0.2 * r_cut, max=r_cut)
@@ -860,16 +829,12 @@ class PeakEllipsoid:
 
         return -A * coeff[0] * y, -A * coeff[1] * y, -A * coeff[2] * y
 
-    def projection(
-        self, Qu, Qv, A, B, mu_u, mu_v, sigma_u, sigma_v, rho, integrate=False
-    ):
+    def projection(self, Qu, Qv, A, B, mu_u, mu_v, sigma_u, sigma_v, rho, integrate=False):
         y = self.generalized2d(Qu, Qv, mu_u, mu_v, sigma_u, sigma_v, rho, integrate)
 
         return A * y + B
 
-    def projection_grad(
-        self, Qu, Qv, A, B, mu_u, mu_v, sigma_u, sigma_v, rho, integrate=False
-    ):
+    def projection_grad(self, Qu, Qv, A, B, mu_u, mu_v, sigma_u, sigma_v, rho, integrate=False):
         y = self.generalized2d(Qu, Qv, mu_u, mu_v, sigma_u, sigma_v, rho, integrate)
 
         u = (Qu - mu_u) / (sigma_u * (1 - rho**2))
@@ -1322,9 +1287,7 @@ class PeakEllipsoid:
         sigma_u = np.sqrt(np.average((xu[pk] - mu_u) ** 2, weights=w))
         sigma_v = np.sqrt(np.average((xv[pk] - mu_v) ** 2, weights=w))
 
-        rho = np.average((xu[pk] - mu_u) * (xv[pk] - mu_v), weights=w) / (
-            sigma_u * sigma_v
-        )
+        rho = np.average((xu[pk] - mu_u) * (xv[pk] - mu_v), weights=w) / (sigma_u * sigma_v)
 
         return intens, sig, bkg, mu_u, mu_v, sigma_u, sigma_v, rho
 

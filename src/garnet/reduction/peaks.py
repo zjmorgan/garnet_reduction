@@ -1,33 +1,31 @@
+import numpy as np
+from mantid import config
+from mantid.dataobjects import PeakShapeEllipsoid
+from mantid.kernel import V3D
 from mantid.simpleapi import (
-    FindPeaksMD,
-    PredictPeaks,
-    PredictSatellitePeaks,
+    AddPeakHKL,
     CentroidPeaksMD,
-    IntegratePeaksMD,
-    PeakIntensityVsRadius,
-    FilterPeaks,
-    SortPeaksWorkspace,
-    DeleteWorkspace,
-    DeleteTableRows,
-    ExtractSingleSpectrum,
+    CloneWorkspace,
     CombinePeaksWorkspaces,
-    CreatePeaksWorkspace,
     ConvertPeaksWorkspace,
     CopySample,
-    CloneWorkspace,
-    SaveNexus,
-    LoadNexus,
-    AddPeakHKL,
+    CreatePeaksWorkspace,
+    DeleteTableRows,
+    DeleteWorkspace,
+    ExtractSingleSpectrum,
+    FilterPeaks,
+    FindPeaksMD,
     HasUB,
+    IntegratePeaksMD,
+    LoadNexus,
+    PeakIntensityVsRadius,
+    PredictPeaks,
+    PredictSatellitePeaks,
+    SaveNexus,
     SetUB,
+    SortPeaksWorkspace,
     mtd,
 )
-
-from mantid.kernel import V3D
-from mantid.dataobjects import PeakShapeEllipsoid
-
-from mantid import config
-import numpy as np
 
 config["Q.convention"] = "Crystallography"
 
@@ -50,8 +48,7 @@ class PeaksModel:
         self.edge_pixels = 0
 
     def find_peaks(self, md, peaks, max_d, density=1000, max_peaks=50):
-        """
-        Harvest strong peak locations from Q-sample into a peaks table.
+        """Harvest strong peak locations from Q-sample into a peaks table.
 
         Parameters
         ----------
@@ -67,7 +64,6 @@ class PeaksModel:
             Maximum number of peaks to find. The default is 50.
 
         """
-
         FindPeaksMD(
             InputWorkspace=md,
             PeakDistanceTreshhold=2 * np.pi / max_d,
@@ -79,8 +75,7 @@ class PeaksModel:
         )
 
     def centroid_peaks(self, md, peaks, peak_radius):
-        """
-        Re-center peak locations using centroid within given radius
+        """Re-center peak locations using centroid within given radius
 
         Parameters
         ----------
@@ -92,7 +87,6 @@ class PeaksModel:
             Integration region radius.
 
         """
-
         CentroidPeaksMD(
             InputWorkspace=md,
             PeakRadius=peak_radius,
@@ -109,8 +103,8 @@ class PeaksModel:
         background_outer_fact=1.5,
         method="sphere",
     ):
-        """
-        Integrate peaks using spherical or ellipsoidal regions.
+        """Integrate peaks using spherical or ellipsoidal regions.
+
         Ellipsoid integration adapts itself to the peak distribution.
 
         Parameters
@@ -129,7 +123,6 @@ class PeaksModel:
             Integration method. The default is 'sphere'.
 
         """
-
         background_inner_radius = peak_radius * background_inner_fact
         background_outer_radius = peak_radius * background_outer_fact
 
@@ -161,8 +154,7 @@ class PeaksModel:
         steps=101,
         fix=False,
     ):
-        """
-        Integrate peak intensity with radius varying from zero to cut off.
+        """Integrate peak intensity with radius varying from zero to cut off.
 
         Parameters
         ----------
@@ -183,7 +175,6 @@ class PeaksModel:
 
         Returns
         -------
-
         radius : list
             Peak radius.
         sig_noise : list
@@ -192,7 +183,6 @@ class PeaksModel:
             Peak intensity.
 
         """
-
         background_inner_rad = background_inner_fact * peak_radius if fix else 0
         background_outer_rad = background_outer_fact * peak_radius if fix else 0
 
@@ -226,8 +216,7 @@ class PeaksModel:
         return peak_radius, sig_noise, intens
 
     def get_max_d_spacing(self, ws):
-        """
-        Obtain the maximum d-spacing from the oriented lattice.
+        """Obtain the maximum d-spacing from the oriented lattice.
 
         Parameters
         ----------
@@ -240,7 +229,6 @@ class PeaksModel:
             Maximum d-spacing.
 
         """
-
         if HasUB(Workspace=ws):
             if hasattr(mtd[ws], "sample"):
                 ol = mtd[ws].sample().getOrientedLattice()
@@ -255,8 +243,7 @@ class PeaksModel:
             return max([ol.a(), ol.b(), ol.c()])
 
     def predict_peaks(self, ws, peaks, centering, d_min, lamda_min, lamda_max):
-        """
-        Predict peak Q-sample locations with UB and lattice centering.
+        """Predict peak Q-sample locations with UB and lattice centering.
 
         +--------+-----------------------+
         | Symbol | Reflection condition  |
@@ -294,7 +281,6 @@ class PeaksModel:
             The wavelength band over which to predict peaks.
 
         """
-
         d_max = self.get_max_d_spacing(ws)
 
         PredictPeaks(
@@ -321,10 +307,10 @@ class PeaksModel:
         max_order=0,
         cross_terms=False,
     ):
-        """
+        """Parameters
 
-        Parameters
         ----------
+
         ws : str
             Name of workspace to predict peaks with UB.
         peaks : str
@@ -343,7 +329,6 @@ class PeaksModel:
             Include modulation cross terms. The default is False.
 
         """
-
         d_max = self.get_max_d_spacing(peaks)
 
         sat_peaks = peaks + "_sat"
@@ -364,15 +349,12 @@ class PeaksModel:
             MaxDSpacing=d_max * 10,
         )
 
-        CombinePeaksWorkspaces(
-            LHSWorkspace=peaks, RHSWorkspace=sat_peaks, OutputWorkspace=peaks
-        )
+        CombinePeaksWorkspaces(LHSWorkspace=peaks, RHSWorkspace=sat_peaks, OutputWorkspace=peaks)
 
         DeleteWorkspace(Workspace=sat_peaks)
 
     def sort_peaks_by_hkl(self, peaks):
-        """
-        Sort peaks table by descending hkl values.
+        """Sort peaks table by descending hkl values.
 
         Parameters
         ----------
@@ -380,7 +362,6 @@ class PeaksModel:
             Name of peaks table.
 
         """
-
         columns = ["l", "k", "h"]
 
         for col in columns:
@@ -392,8 +373,7 @@ class PeaksModel:
             )
 
     def sort_peaks_by_d(self, peaks):
-        """
-        Sort peaks table by descending d-spacing.
+        """Sort peaks table by descending d-spacing.
 
         Parameters
         ----------
@@ -401,7 +381,6 @@ class PeaksModel:
             Name of peaks table.
 
         """
-
         SortPeaksWorkspace(
             InputWorkspace=peaks,
             ColumnNameToSortBy="DSpacing",
@@ -410,8 +389,8 @@ class PeaksModel:
         )
 
     def remove_duplicate_peaks(self, peaks):
-        """
-        Omit duplicate peaks from different based on indexing.
+        """Omit duplicate peaks from different based on indexing.
+
         Table will be sorted.
 
         Parameters
@@ -420,18 +399,14 @@ class PeaksModel:
             Name of peaks table.
 
         """
-
         self.sort_peaks_by_hkl(peaks)
 
         for no in range(mtd[peaks].getNumberPeaks() - 1, 0, -1):
-            if (
-                mtd[peaks].getPeak(no).getHKL() - mtd[peaks].getPeak(no - 1).getHKL()
-            ).norm2() == 0:
+            if (mtd[peaks].getPeak(no).getHKL() - mtd[peaks].getPeak(no - 1).getHKL()).norm2() == 0:
                 DeleteTableRows(TableWorkspace=peaks, Rows=no)
 
     def get_all_goniometer_matrices(self, ws):
-        """
-        Extract all goniometer matrices.
+        """Extract all goniometer matrices.
 
         Parameters
         ----------
@@ -456,8 +431,7 @@ class PeaksModel:
         return np.array(Rs)
 
     def renumber_runs_by_index(self, ws, peaks):
-        """
-        Re-label the runs by index based on goniometer setting.
+        """Re-label the runs by index based on goniometer setting.
 
         Parameters
         ----------
@@ -467,7 +441,6 @@ class PeaksModel:
             Name of peaks table.
 
         """
-
         Rs = self.get_all_goniometer_matrices(ws)
 
         for no in range(mtd[peaks].getNumberPeaks()):
@@ -481,8 +454,7 @@ class PeaksModel:
             peak.setRunNumber(i + 1)
 
     def load_peaks(self, filename, peaks):
-        """
-        Load peaks file.
+        """Load peaks file.
 
         Parameters
         ----------
@@ -492,12 +464,10 @@ class PeaksModel:
             Name of peaks table.
 
         """
-
         LoadNexus(Filename=filename, OutputWorkspace=peaks)
 
     def save_peaks(self, filename, peaks):
-        """
-        Save peaks file.
+        """Save peaks file.
 
         Parameters
         ----------
@@ -507,12 +477,10 @@ class PeaksModel:
             Name of peaks table.
 
         """
-
         SaveNexus(Filename=filename, InputWorkspace=peaks)
 
     def convert_peaks(self, peaks):
-        """
-        Remove instrument from peaks.
+        """Remove instrument from peaks.
 
         Parameters
         ----------
@@ -520,12 +488,10 @@ class PeaksModel:
             Name of peaks table.
 
         """
-
         ConvertPeaksWorkspace(PeakWorkspace=peaks, OutputWorkspace=peaks)
 
     def combine_peaks(self, peaks, merge):
-        """
-        Merge two peaks workspaces into one.
+        """Merge two peaks workspaces into one.
 
         Parameters
         ----------
@@ -535,18 +501,14 @@ class PeaksModel:
             Name of peaks table to be accumulated.
 
         """
-
         if not mtd.doesExist(merge):
             CloneWorkspace(InputWorkspace=peaks, OutputWorkspace=merge)
 
         else:
-            CombinePeaksWorkspaces(
-                LHSWorkspace=merge, RHSWorkspace=peaks, OutputWorkspace=merge
-            )
+            CombinePeaksWorkspaces(LHSWorkspace=merge, RHSWorkspace=peaks, OutputWorkspace=merge)
 
     def delete_peaks(self, peaks):
-        """
-        Remove peaks.
+        """Remove peaks.
 
         Parameters
         ----------
@@ -554,13 +516,11 @@ class PeaksModel:
             Name of peaks table to be added.
 
         """
-
         if mtd.doesExist(peaks):
             DeleteWorkspace(Workspace=peaks)
 
     def remove_weak_peaks(self, peaks, sig_noise=3):
-        """
-        Filter out weak peaks based on signal-to-noise ratio.
+        """Filter out weak peaks based on signal-to-noise ratio.
 
         Parameters
         ----------
@@ -570,7 +530,6 @@ class PeaksModel:
             Minimum signal-to-noise ratio. The default is 3.
 
         """
-
         FilterPeaks(
             InputWorkspace=peaks,
             OutputWorkspace=peaks,
@@ -582,8 +541,7 @@ class PeaksModel:
         )
 
     def create_peaks(self, ws, peaks):
-        """
-        Create a new peaks table.
+        """Create a new peaks table.
 
         ws : str
             Name of workspace.
@@ -591,10 +549,7 @@ class PeaksModel:
             Name of peaks table.
 
         """
-
-        CreatePeaksWorkspace(
-            InstrumentWorkspace=ws, NumberOfPeaks=0, OutputWorkspace=peaks
-        )
+        CreatePeaksWorkspace(InstrumentWorkspace=ws, NumberOfPeaks=0, OutputWorkspace=peaks)
 
         CopySample(
             InputWorkspace=ws,
@@ -606,8 +561,7 @@ class PeaksModel:
         )
 
     def add_peak(self, peaks, hkl):
-        """
-        Add a peak to an existing table.
+        """Add a peak to an existing table.
 
         Parameters
         ----------
@@ -617,12 +571,10 @@ class PeaksModel:
             Miller index.
 
         """
-
         AddPeakHKL(Workspace=peaks, HKL=hkl)
 
     def set_goniometer(self, peaks, R):
-        """
-        Update the goniometer on the run.
+        """Update the goniometer on the run.
 
         Parameters
         ----------
@@ -632,12 +584,10 @@ class PeaksModel:
             Goniometer matrix.
 
         """
-
         mtd[peaks].run().getGoniometer().setR(R)
 
     def get_peaks_name(self, peaks):
-        """
-        Name of peaks.
+        """Name of peaks.
 
         Returns
         -------
@@ -645,7 +595,6 @@ class PeaksModel:
             Readable name of peaks.
 
         """
-
         peak = mtd[peaks].getPeak(0)
 
         run = peak.getRunNumber()
@@ -659,8 +608,7 @@ class PeakModel:
         self.peaks = peaks
 
     def get_number_peaks(self):
-        """
-        Total number of peaks in the table.
+        """Total number of peaks in the table.
 
         Returns
         -------
@@ -668,12 +616,10 @@ class PeakModel:
             Number of peaks
 
         """
-
         return mtd[self.peaks].getNumberPeaks()
 
     def set_peak_intensity(self, no, intens, sig):
-        """
-        Update the peak intensity.
+        """Update the peak intensity.
 
         Parameters
         ----------
@@ -685,13 +631,11 @@ class PeakModel:
             Uncertainty.
 
         """
-
         mtd[self.peaks].getPeak(no).setIntensity(intens)
         mtd[self.peaks].getPeak(no).setSigmaIntensity(sig)
 
     def get_wavelength(self, no):
-        """
-        Wavelength of the peak.
+        """Wavelength of the peak.
 
         Parameters
         ----------
@@ -704,14 +648,12 @@ class PeakModel:
             Wavelength in angstroms.
 
         """
-
         peak = mtd[self.peaks].getPeak(no)
 
         return peak.getWavelength()
 
     def get_angles(self, no):
-        """
-        Scattering and azimuthal angle of the peak.
+        """Scattering and azimuthal angle of the peak.
 
         Parameters
         ----------
@@ -726,7 +668,6 @@ class PeakModel:
             Azimuthal angle in degrees.
 
         """
-
         peak = mtd[self.peaks].getPeak(no)
 
         two_theta = np.rad2deg(peak.getScattering())
@@ -735,8 +676,7 @@ class PeakModel:
         return two_theta, az_phi
 
     def get_goniometer_angles(self, no):
-        """
-        Goniometer Euler angles of the peak.
+        """Goniometer Euler angles of the peak.
 
         Parameters
         ----------
@@ -749,7 +689,6 @@ class PeakModel:
             Euler angles (YZY convention) in degrees.
 
         """
-
         peak = mtd[self.peaks].getPeak(no)
         gon = mtd[self.peaks].run().getGoniometer()
 
@@ -759,8 +698,7 @@ class PeakModel:
         return list(gon.getEulerAngles())
 
     def set_background(self, no, bkg, bkg_err):
-        """
-        Add the background level.
+        """Add the background level.
 
         Parameters
         ----------
@@ -772,15 +710,13 @@ class PeakModel:
             Background error.
 
         """
-
         peak = mtd[self.peaks].getPeak(no)
 
         peak.setBinCount(bkg)
         peak.setAbsorptionWeightedPathLength(bkg_err)
 
     def get_peak_name(self, no):
-        """
-        Name of peak.
+        """Name of peak.
 
         Parameters
         ----------
@@ -793,7 +729,6 @@ class PeakModel:
             Readable name of peak.
 
         """
-
         peak = mtd[self.peaks].getPeak(no)
 
         run = peak.getRunNumber()
@@ -806,11 +741,7 @@ class PeakModel:
             mod_2 = ol.getModVec(1)
             mod_3 = ol.getModVec(2)
             index_h, index_k, index_l, vector_m, vector_n, vector_p = *hkl, *mnp
-            dh, dk, dl = (
-                vector_m * np.array(mod_1)
-                + vector_n * np.array(mod_2)
-                + vector_p * np.array(mod_3)
-            )
+            dh, dk, dl = vector_m * np.array(mod_1) + vector_n * np.array(mod_2) + vector_p * np.array(mod_3)
             d = ol.d(V3D(index_h + dh, index_k + dk, index_l + dl))
         else:
             d = peak.getDSpacing()
@@ -819,8 +750,7 @@ class PeakModel:
         return name.format(d, *hkl, *mnp, run)
 
     def get_peak_shape(self, no, r_cut=np.inf):
-        """
-        Obtain the peak shape parameters.
+        """Obtain the peak shape parameters.
 
         Parameters
         ----------
@@ -837,7 +767,6 @@ class PeakModel:
             Principal axis directions.
 
         """
-
         Q0, Q1, Q2 = mtd[self.peaks].getPeak(no).getQSampleFrame()
 
         shape = mtd[self.peaks].getPeak(no).getPeakShape()
@@ -870,8 +799,7 @@ class PeakModel:
         return c0, c1, c2, r0, r1, r2, v0, v1, v2
 
     def set_peak_shape(self, no, c0, c1, c2, r0, r1, r2, v0, v1, v2):
-        """
-        Update the shape of the peak.
+        """Update the shape of the peak.
 
         Parameters
         ----------
@@ -885,7 +813,6 @@ class PeakModel:
             Principal axis directions.
 
         """
-
         R = mtd[self.peaks].getPeak(no).getGoniometerMatrix()
 
         Q = np.array([c0, c1, c2])

@@ -1,10 +1,7 @@
+import multiprocessing
 import os
 
-import multiprocessing
-
-
 import numpy as np
-
 from mantid import config
 
 multiprocessing.set_start_method("spawn", force=True)
@@ -18,8 +15,7 @@ class ParallelTasks:
         self.results = None
 
     def run_tasks(self, plan, n_proc):
-        """
-        Run parallel tasks with processing pool.
+        """Run parallel tasks with processing pool.
 
         Parameters
         ----------
@@ -29,7 +25,6 @@ class ParallelTasks:
             Number of processes.
 
         """
-
         runs = plan["Runs"]
 
         split = [split.tolist() for split in np.array_split(runs, n_proc)]
@@ -62,7 +57,7 @@ class ParallelTasks:
         try:
             return self.function(*args, **kwargs)
         except Exception as e:
-            print("Exception in worker function: {}".format(e))
+            print(f"Exception in worker function: {e}")
             import traceback
 
             traceback.print_exc()

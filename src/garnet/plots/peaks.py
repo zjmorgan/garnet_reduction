@@ -1,13 +1,11 @@
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
+import scipy.special
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
+from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 from matplotlib.patches import Ellipse
 from matplotlib.transforms import Affine2D
-from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
-
-import scipy.special
 
 from garnet.plots.base import BasePlot
 
@@ -40,10 +38,7 @@ class RadiusPlot(BasePlot):
 
         z = x / sigma
 
-        y = A * (
-            scipy.special.erf(z / np.sqrt(2))
-            - np.sqrt(2 / np.pi) * z * np.exp(-0.5 * z**2)
-        )
+        y = A * (scipy.special.erf(z / np.sqrt(2)) - np.sqrt(2 / np.pi) * z * np.exp(-0.5 * z**2))
 
         self.ax.plot(x, y, "-", color="C1")
         self.ax.set_ylabel(r"$I/\sigma$")
@@ -73,9 +68,7 @@ class PeakPlot(BasePlot):
 
         self.gs.append(gs)
 
-        gs = GridSpecFromSubplotSpec(
-            2, 3, height_ratios=[1, 1], width_ratios=[r0, r0, r1], subplot_spec=sp[2]
-        )
+        gs = GridSpecFromSubplotSpec(2, 3, height_ratios=[1, 1], width_ratios=[r0, r0, r1], subplot_spec=sp[2])
 
         self.gs.append(gs)
 
@@ -84,8 +77,7 @@ class PeakPlot(BasePlot):
         self.add_ellipsoid_fit(xye_3d, y_3d_fit)
 
     def _color_limits(self, y1, y2):
-        """
-        Calculate color limits common for two arrays.
+        """Calculate color limits common for two arrays.
 
         Parameters
         ----------
@@ -100,7 +92,6 @@ class PeakPlot(BasePlot):
             Color limits
 
         """
-
         vmin = np.nanmax([np.nanmin(y1), np.nanmin(y2)])
         vmax = np.nanmin([np.nanmax(y1), np.nanmax(y2)])
 
@@ -110,8 +101,7 @@ class PeakPlot(BasePlot):
         return vmin, vmax
 
     def add_ellipsoid_fit(self, xye, y_fit):
-        """
-        Three-dimensional ellipsoids.
+        """Three-dimensional ellipsoids.
 
         Parameters
         ----------
@@ -121,7 +111,6 @@ class PeakPlot(BasePlot):
             Fitted result.
 
         """
-
         axes, bins, y, e = xye
 
         x0, x1, x2 = axes
@@ -271,8 +260,7 @@ class PeakPlot(BasePlot):
         self.gs = gs
 
     def add_projection_fit(self, xye, y_fit):
-        """
-        Two-dimensional ellipses.
+        """Two-dimensional ellipses.
 
         Parameters
         ----------
@@ -282,7 +270,6 @@ class PeakPlot(BasePlot):
             Fitted result.
 
         """
-
         (xu, xv), (dxu, dxv), y, e = xye
 
         mask = np.isfinite(y)
@@ -338,8 +325,7 @@ class PeakPlot(BasePlot):
         cb.ax.minorticks_on()
 
     def add_profile_fit(self, xye, y_fit):
-        """
-        One-dimensional Gaussian.
+        """One-dimensional Gaussian.
 
         Parameters
         ----------
@@ -349,7 +335,6 @@ class PeakPlot(BasePlot):
             Fitted result.
 
         """
-
         x, dx, y, e = xye
 
         gs = self.gs[0]
@@ -365,8 +350,7 @@ class PeakPlot(BasePlot):
         ax.set_xlabel(r"$|Q|$ [$\AA^{-1}$]")
 
     def add_ellipsoid(self, c, S, W, vals):
-        """
-        Draw ellipsoid envelopes.
+        """Draw ellipsoid envelopes.
 
         Parameters
         ----------
@@ -380,7 +364,6 @@ class PeakPlot(BasePlot):
             Fitted parameters.
 
         """
-
         r = np.sqrt(np.diag(S))
 
         rho = [S[1, 2] / r[1] / r[2], S[0, 2] / r[0] / r[2], S[0, 1] / r[0] / r[1]]
@@ -406,8 +389,7 @@ class PeakPlot(BasePlot):
             self._draw_intersecting_line(ax, c[1], c[2])
 
     def _draw_ellipse(self, ax, cx, cy, rx, ry, rho):
-        """
-        Draw ellipse with center, size, and orientation.
+        """Draw ellipse with center, size, and orientation.
 
         Parameters
         ----------
@@ -421,7 +403,6 @@ class PeakPlot(BasePlot):
             Correlation.
 
         """
-
         peak = Ellipse(
             (0, 0),
             width=2 * np.sqrt(1 + rho),
@@ -440,8 +421,7 @@ class PeakPlot(BasePlot):
         ax.add_patch(peak)
 
     def _draw_intersecting_line(self, ax, x0, y0):
-        """
-        Draw line toward origin.
+        """Draw line toward origin.
 
         Parameters
         ----------
@@ -451,7 +431,6 @@ class PeakPlot(BasePlot):
             Center.
 
         """
-
         x_min, x_max = ax.get_xlim()
         y_min, y_max = ax.get_ylim()
 
@@ -483,8 +462,7 @@ class PeakPlot(BasePlot):
         ax.plot([x1, x2], [y1, y2], color="k", linestyle="--")
 
     def _sci_notation(self, x):
-        """
-        Represent float in scientific notation using LaTeX.
+        """Represent float in scientific notation using LaTeX.
 
         Parameters
         ----------
@@ -497,16 +475,14 @@ class PeakPlot(BasePlot):
             String representation in LaTeX.
 
         """
-
         if np.isfinite(x):
             exp = int(np.floor(np.log10(abs(x))))
-            return "{:.2f}\\times 10^{{{}}}".format(x / 10**exp, exp)
+            return f"{x / 10**exp:.2f}\\times 10^{{{exp}}}"
         else:
             return "\\infty"
 
     def add_peak_intensity(self, intens, sig_noise):
-        """
-        Add integrated intensities.
+        """Add integrated intensities.
 
         Parameters
         ----------
@@ -516,15 +492,10 @@ class PeakPlot(BasePlot):
             Signal-to-noise ratio.
 
         """
-
         intensity = r"$I={}$ [arb. unit]"
-        intensity_sig = "$I/\sigma={:.1f}$"
+        intensity_sig = r"$I/\sigma={:.1f}$"
 
-        title = (
-            intensity.format(self._sci_notation(intens[0]))
-            + " "
-            + intensity_sig.format(sig_noise[0])
-        )
+        title = intensity.format(self._sci_notation(intens[0])) + " " + intensity_sig.format(sig_noise[0])
 
         self.prof.set_title(title)
         self.proj[0].set_title(intensity.format(self._sci_notation(intens[1])))
@@ -534,8 +505,7 @@ class PeakPlot(BasePlot):
         self.ellip[1].set_title(intensity_sig.format(sig_noise[2]))
 
     def add_peak_info(self, wavelength, angles, gon):
-        """
-        Add peak information.
+        """Add peak information.
 
         Parameters
         ----------
@@ -547,10 +517,9 @@ class PeakPlot(BasePlot):
             Goniometer Euler angles.
 
         """
-
         ellip = self.ellip
 
-        ellip[2].set_title(r"$\lambda={:.4f}$ [$\AA$]".format(wavelength))
+        ellip[2].set_title(rf"$\lambda={wavelength:.4f}$ [$\AA$]")
         ellip[3].set_title(r"$({:.1f},{:.1f},{:.1f})^\circ$".format(*gon))
-        ellip[4].set_title(r"$2\theta={:.2f}^\circ$".format(angles[0]))
-        ellip[5].set_title(r"$\phi={:.2f}^\circ$".format(angles[1]))
+        ellip[4].set_title(rf"$2\theta={angles[0]:.2f}^\circ$")
+        ellip[5].set_title(rf"$\phi={angles[1]:.2f}^\circ$")

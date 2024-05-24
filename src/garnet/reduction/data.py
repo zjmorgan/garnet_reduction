@@ -1,54 +1,52 @@
 import os
 
 import numpy as np
-
+from mantid import config
 from mantid.simpleapi import (
-    Load,
-    LoadNexus,
-    LoadParameterFile,
-    LoadIsawDetCal,
-    ApplyCalibration,
-    PreprocessDetectorsToMD,
-    ExtractMonitors,
-    LoadMask,
-    MaskDetectors,
-    SetGoniometer,
-    LoadWANDSCD,
-    HB3AAdjustSampleNorm,
-    CorelliCrossCorrelate,
-    NormaliseByCurrent,
-    GroupDetectors,
-    LoadEmptyInstrument,
-    CopyInstrumentParameters,
-    ConvertToMD,
-    ConvertHFIRSCDtoMDE,
-    ReplicateMD,
-    BinMD,
-    DivideMD,
-    MultiplyMD,
-    MDNorm,
-    ConvertWANDSCDtoQ,
-    ConvertUnits,
-    CropWorkspaceForMDNorm,
-    ClearUB,
-    LoadIsawUB,
-    SaveIsawUB,
-    CloneWorkspace,
-    PlusMD,
-    MinusMD,
-    SaveMD,
-    LoadMD,
-    CreateSingleValuedWorkspace,
     AddSampleLog,
+    ApplyCalibration,
+    BinMD,
+    ClearUB,
+    CloneWorkspace,
+    ConvertHFIRSCDtoMDE,
+    ConvertToMD,
+    ConvertUnits,
+    ConvertWANDSCDtoQ,
+    CopyInstrumentParameters,
     CopySample,
+    CorelliCrossCorrelate,
+    CreateSingleValuedWorkspace,
+    CropWorkspaceForMDNorm,
     DeleteWorkspace,
     DeleteWorkspaces,
+    DivideMD,
+    ExtractMonitors,
+    GroupDetectors,
+    HB3AAdjustSampleNorm,
+    Load,
+    LoadEmptyInstrument,
+    LoadIsawDetCal,
+    LoadIsawUB,
+    LoadMask,
+    LoadMD,
+    LoadNexus,
+    LoadParameterFile,
+    LoadWANDSCD,
+    MaskDetectors,
+    MDNorm,
     MergeMD,
     MergeMDFiles,
+    MinusMD,
+    MultiplyMD,
+    NormaliseByCurrent,
+    PlusMD,
+    PreprocessDetectorsToMD,
+    ReplicateMD,
+    SaveIsawUB,
+    SaveMD,
+    SetGoniometer,
     mtd,
 )
-
-from mantid import config
 
 config["Q.convention"] = "Crystallography"
 
@@ -101,13 +99,10 @@ class BaseDataModel:
         self.ref_inst = self.instrument_config["InstrumentName"]
 
         if not mtd.doesExist(self.instrument):
-            LoadEmptyInstrument(
-                InstrumentName=self.ref_inst, OutputWorkspace=self.instrument
-            )
+            LoadEmptyInstrument(InstrumentName=self.ref_inst, OutputWorkspace=self.instrument)
 
     def update_raw_path(self, plan):
-        """
-        Set additional parameters for data file.
+        """Set additional parameters for data file.
 
         Parameters
         ----------
@@ -115,7 +110,6 @@ class BaseDataModel:
             Reduction plan.
 
         """
-
         instrument = plan["Instrument"]
 
         self.elastic = None
@@ -141,8 +135,7 @@ class BaseDataModel:
         #     assert os.path.exists(file)
 
     def load_clear_UB(self, filename, ws):
-        """
-        Load UB from file and replace.
+        """Load UB from file and replace.
 
         Parameters
         ----------
@@ -152,13 +145,11 @@ class BaseDataModel:
            Name of data.
 
         """
-
         ClearUB(Workspace=ws)
         LoadIsawUB(InputWorkspace=ws, Filename=filename)
 
     def save_UB(self, filename, ws):
-        """
-        Save UB to file.
+        """Save UB to file.
 
         Parameters
         ----------
@@ -168,12 +159,10 @@ class BaseDataModel:
            Name of data.
 
         """
-
         SaveIsawUB(InputWorkspace=ws, Filename=filename)
 
     def get_file_name_list(self, IPTS, runs):
-        """
-        Complete list of file paths.
+        """Complete list of file paths.
 
         Parameters
         ----------
@@ -188,7 +177,6 @@ class BaseDataModel:
             List of filepaths.
 
         """
-
         if isinstance(runs, int):
             runs = [runs]
 
@@ -196,8 +184,7 @@ class BaseDataModel:
         return [filename.format(IPTS, run) for run in runs]
 
     def file_names(self, IPTS, runs):
-        """
-        Complete file paths.
+        """Complete file paths.
 
         Parameters
         ----------
@@ -212,13 +199,11 @@ class BaseDataModel:
             Comma separated filepaths.
 
         """
-
         filenames = self.get_file_name_list(IPTS, runs)
         return ",".join(filenames)
 
     def get_min_max_values(self):
-        """
-        The minimum and maximum Q-values.
+        """Get the minimum and maximum Q-values.
 
         Returns
         -------
@@ -228,12 +213,10 @@ class BaseDataModel:
             Maximum Q.
 
         """
-
         return 3 * [-self.Q_max], 3 * [+self.Q_max]
 
     def set_goniometer(self, ws):
-        """
-        Set the goniomter motor angles
+        """Set the goniomter motor angles
 
         Parameters
         ----------
@@ -241,7 +224,6 @@ class BaseDataModel:
            Name of raw data.
 
         """
-
         SetGoniometer(
             Workspace=ws,
             Goniometers="None, Specify Individually",
@@ -255,8 +237,7 @@ class BaseDataModel:
         )
 
     def calculate_binning_from_bins(self, xmin, xmax, bins):
-        """
-        Determine the binning from the number of bins.
+        """Determine the binning from the number of bins.
 
         Parameters
         ----------
@@ -277,7 +258,6 @@ class BaseDataModel:
             Bin step.
 
         """
-
         if bins > 1:
             step = (xmax - xmin) / (bins - 1)
 
@@ -289,9 +269,8 @@ class BaseDataModel:
         else:
             return xmin, xmax, xmax - xmin
 
-    def calculate_binning_from_step(xmin, xmax, step):
-        """
-        Determine the binning from step size.
+    def calculate_binning_from_step(self, xmin, xmax, step):
+        """Determine the binning from step size.
 
         Parameters
         ----------
@@ -312,7 +291,6 @@ class BaseDataModel:
             Number of bins.
 
         """
-
         if step < xmax - xmin:
             bins = np.ceil((xmax - xmin) / step) + 1
 
@@ -325,8 +303,7 @@ class BaseDataModel:
             return xmin, xmax, 1
 
     def extract_bin_info(self, ws):
-        """
-        Obtain the bin information from a histogram.
+        """Obtain the bin information from a histogram.
 
         Parameters
         ----------
@@ -343,16 +320,12 @@ class BaseDataModel:
             Dense bin center coordinates.
 
         """
-
         signal = mtd[ws].getSignalArray().copy()
         error = np.sqrt(mtd[ws].getErrorSquaredArray())
 
         dims = [mtd[ws].getDimension(i) for i in range(mtd[ws].getNumDims())]
 
-        xs = [
-            np.linspace(dim.getMinimum(), dim.getMaximum(), dim.getNBoundaries())
-            for dim in dims
-        ]
+        xs = [np.linspace(dim.getMinimum(), dim.getMaximum(), dim.getNBoundaries()) for dim in dims]
 
         xs = [0.5 * (x[1:] + x[:-1]) for x in xs]
 
@@ -361,8 +334,7 @@ class BaseDataModel:
         return signal, error, *xs
 
     def extract_axis_info(self, ws):
-        """
-        Obtain the axis information from a histogram.
+        """Obtain the axis information from a histogram.
 
         Parameters
         ----------
@@ -381,7 +353,6 @@ class BaseDataModel:
             Bin center coordinates.
 
         """
-
         ei = mtd[ws].getExperimentInfo(0)
 
         UB = ei.sample().getOrientedLattice().getUB()
@@ -391,18 +362,14 @@ class BaseDataModel:
 
         titles = [dim.name + " " + dim.getUnits() for dim in dims]
 
-        xs = [
-            np.linspace(dim.getMinimum(), dim.getMaximum(), dim.getNBoundaries())
-            for dim in dims
-        ]
+        xs = [np.linspace(dim.getMinimum(), dim.getMaximum(), dim.getNBoundaries()) for dim in dims]
 
         xs = [0.5 * (x[1:] + x[:-1]) for x in xs]
 
         return UB, W, titles, xs
 
     def combine_histograms(self, ws, merge):
-        """
-        Add two histogram workspaces together.
+        """Add two histogram workspaces together.
 
         Parameters
         ----------
@@ -412,7 +379,6 @@ class BaseDataModel:
             Name of histogram to be accumulated.
 
         """
-
         if not mtd.doesExist(merge):
             CloneWorkspace(InputWorkspace=ws, OutputWorkspace=merge)
 
@@ -422,8 +388,7 @@ class BaseDataModel:
             DeleteWorkspace(Workspace=ws)
 
     def divide_histograms(self, ws, num, den):
-        """
-        Divide two histogram workspaces.
+        """Divide two histogram workspaces.
 
         Parameters
         ----------
@@ -435,12 +400,10 @@ class BaseDataModel:
             Name of denominator histogram.
 
         """
-
         DivideMD(LHSWorkspace=num, RHSWorkspace=den, OutputWorkspace=ws)
 
     def subtract_histograms(self, ws, ws1, ws2):
-        """
-        Difference between two histograms.
+        """Difference between two histograms.
 
         Parameters
         ----------
@@ -452,12 +415,10 @@ class BaseDataModel:
             Name of second histogram.
 
         """
-
         MinusMD(LHSWorkspace=ws1, RHSWorkspace=ws2, OutputWorkspace=ws)
 
     def load_histograms(self, filename, ws):
-        """
-        Load histograms file.
+        """Load histograms file.
 
         Parameters
         ----------
@@ -467,12 +428,10 @@ class BaseDataModel:
             Name of histogram to be added.
 
         """
-
         LoadMD(Filename=filename, OutputWorkspace=ws)
 
     def save_histograms(self, filename, ws, sample_logs=False):
-        """
-        Save histograms file.
+        """Save histograms file.
 
         Parameters
         ----------
@@ -482,7 +441,6 @@ class BaseDataModel:
             Name of histogram to be added.
 
         """
-
         SaveMD(
             Filename=filename,
             InputWorkspace=ws,
@@ -493,8 +451,7 @@ class BaseDataModel:
         )
 
     def merge_Q_sample(self, filenames, filename, merge):
-        """
-        Merge Q-sample files into one.
+        """Merge Q-sample files into one.
 
         Parameters
         ----------
@@ -506,7 +463,6 @@ class BaseDataModel:
             Name of Q-sample workspace to be accumulated.
 
         """
-
         MergeMDFiles(
             Filenames=filenames,
             OutputFilenames=filename,
@@ -515,8 +471,7 @@ class BaseDataModel:
         )
 
     def combine_Q_sample(self, combine, merge):
-        """
-        Merge Q-sample workspaces into one.
+        """Merge Q-sample workspaces into one.
 
         Parameters
         ----------
@@ -526,14 +481,12 @@ class BaseDataModel:
             Name of combined Q-sample workspace.
 
         """
-
         MergeMD(InputWorkspaces=combine, OutputWorkspace=merge)
 
         DeleteWorkspaces(WorkspaceList=combine)
 
     def add_UBW(self, ws, ub_file, projections):
-        """
-        Attach sample UB and projection matrix to workspace
+        """Attach sample UB and projection matrix to workspace
 
         Parameters
         ----------
@@ -545,7 +498,6 @@ class BaseDataModel:
             Axis projections.
 
         """
-
         CreateSingleValuedWorkspace(OutputWorkspace="ubw")
 
         W = np.column_stack(projections)
@@ -555,9 +507,7 @@ class BaseDataModel:
         LoadIsawUB(InputWorkspace="ubw", Filename=ub_file)
 
         if mtd.doesExist(ws):
-            AddSampleLog(
-                Workspace=ws, LogName="W_MATRIX", LogText=W_MATRIX, LogType="String"
-            )
+            AddSampleLog(Workspace=ws, LogName="W_MATRIX", LogText=W_MATRIX, LogType="String")
 
             run = mtd[ws].getExperimentInfo(0).run()
             run.addProperty("W_MATRIX", list(W.flatten() * 1.0), True)
@@ -580,8 +530,7 @@ class MonochromaticData(BaseDataModel):
         self.laue = False
 
     def load_data(self, histo_name, IPTS, runs, grouping=None):
-        """
-        Load raw data into detector counts vs rotation index.
+        """Load raw data into detector counts vs rotation index.
 
         Parameters
         ----------
@@ -595,7 +544,6 @@ class MonochromaticData(BaseDataModel):
             Options for grouping pixels.
 
         """
-
         filenames = self.file_names(IPTS, runs)
 
         self.grouping = "None" if grouping is None else grouping
@@ -612,9 +560,7 @@ class MonochromaticData(BaseDataModel):
             self.scale = run.getProperty("time").value
 
         else:
-            LoadWANDSCD(
-                Filename=filenames, Grouping=grouping, OutputWorkspace=histo_name
-            )
+            LoadWANDSCD(Filename=filenames, Grouping=grouping, OutputWorkspace=histo_name)
             run = mtd[histo_name].getExperimentInfo(0).run()
             self.scale = run.getProperty("duration").value
 
@@ -630,8 +576,7 @@ class MonochromaticData(BaseDataModel):
         self.set_goniometer(histo_name)
 
     def convert_to_Q_sample(self, histo_name, md_name, lorentz_corr=False):
-        """
-        Convert raw data to Q-sample.
+        """Convert raw data to Q-sample.
 
         Parameters
         ----------
@@ -643,7 +588,6 @@ class MonochromaticData(BaseDataModel):
             Apply Lorentz correction. The default is False.
 
         """
-
         if mtd.doesExist(histo_name):
             Q_min_vals, Q_max_vals = self.get_min_max_values()
 
@@ -657,8 +601,8 @@ class MonochromaticData(BaseDataModel):
             )
 
     def load_generate_normalization(self, filename, histo_name=None):
-        """
-        Load a vanadium file and generate normalization data.
+        """Load a vanadium file and generate normalization data.
+
         Provided a histogram workspace name, generate corresponding shape.
 
         Parameters
@@ -669,7 +613,6 @@ class MonochromaticData(BaseDataModel):
             Name of raw histogram data.
 
         """
-
         if not mtd.doesExist("van"):
             if self.instrument == "DEMAND":
                 HB3AAdjustSampleNorm(
@@ -681,13 +624,11 @@ class MonochromaticData(BaseDataModel):
                 )
 
             else:
-                LoadWANDSCD(
-                    Filename=filename, Grouping=self.grouping, OutputWorkspace="van"
-                )
+                LoadWANDSCD(Filename=filename, Grouping=self.grouping, OutputWorkspace="van")
 
             if histo_name is not None:
                 if mtd.doesExist(histo_name):
-                    ws_name = "{}_van".format(histo_name)
+                    ws_name = f"{histo_name}_van"
 
                     ReplicateMD(
                         ShapeWorkspace=histo_name,
@@ -712,8 +653,7 @@ class MonochromaticData(BaseDataModel):
                     )
 
     def load_background(self, filename, histo_name=None):
-        """
-        Load a background file and scale to data.
+        """Load a background file and scale to data.
 
         Parameters
         ----------
@@ -723,7 +663,6 @@ class MonochromaticData(BaseDataModel):
             Name of raw histogram data.
 
         """
-
         if not mtd.doesExist("bkg") and filename is not None:
             if self.instrument == "DEMAND":
                 HB3AAdjustSampleNorm(
@@ -737,15 +676,13 @@ class MonochromaticData(BaseDataModel):
                 scale = run().getProperty("time").value
 
             else:
-                LoadWANDSCD(
-                    Filename=filename, Grouping=self.grouping, OutputWorkspace="bkg"
-                )
+                LoadWANDSCD(Filename=filename, Grouping=self.grouping, OutputWorkspace="bkg")
                 run = mtd["bkg"].getExperimentInfo(0).run()
                 scale = run.getProperty("duration").value
 
             if histo_name is not None:
                 if mtd.doesExist(histo_name):
-                    ws_name = "{}_bkg".format(histo_name)
+                    ws_name = f"{histo_name}_bkg"
 
                     if not mtd.doesExist(ws_name):
                         ReplicateMD(
@@ -760,8 +697,7 @@ class MonochromaticData(BaseDataModel):
                         mtd[ws_name].setSignalArray(signal * self.scale / scale)
 
     def normalize_to_Q_sample(self, md, extents, bins):
-        """
-        Histogram data into normalized Q-sample.
+        """Histogram data into normalized Q-sample.
 
         Parameters
         ----------
@@ -773,7 +709,6 @@ class MonochromaticData(BaseDataModel):
             Number of bins for each dimension.
 
         """
-
         if mtd.doesExist(md) and mtd.doesExist("norm"):
             extents = np.array(extents).flatten().tolist()
 
@@ -811,8 +746,7 @@ class MonochromaticData(BaseDataModel):
             return data, norm, Q0, Q1, Q2
 
     def normalize_to_hkl(self, ws, projections, extents, bins, symmetry=None):
-        """
-        Normalizae to binned hkl.
+        """Normalizae to binned hkl.
 
         Parameters
         ----------
@@ -828,7 +762,6 @@ class MonochromaticData(BaseDataModel):
             Laue point group. The default is None.
 
         """
-
         if mtd.doesExist(ws) and mtd.doesExist("van"):
             v0, v1, v2 = projections
 
@@ -875,9 +808,9 @@ class MonochromaticData(BaseDataModel):
                 Uproj="{},{},{}".format(*v0),
                 Vproj="{},{},{}".format(*v1),
                 Wproj="{},{},{}".format(*v2),
-                BinningDim0="{},{},{}".format(Q0_min, Q0_max, nQ0),
-                BinningDim1="{},{},{}".format(Q1_min, Q1_max, nQ1),
-                BinningDim2="{},{},{}".format(Q2_min, Q2_max, nQ2),
+                BinningDim0=f"{Q0_min},{Q0_max},{nQ0}",
+                BinningDim1=f"{Q1_min},{Q1_max},{nQ1}",
+                BinningDim2=f"{Q2_min},{Q2_max},{nQ2}",
             )
 
 
@@ -888,8 +821,7 @@ class LaueData(BaseDataModel):
         self.laue = True
 
     def load_data(self, event_name, IPTS, runs):
-        """
-        Load raw data into time-of-flight vs counts.
+        """Load raw data into time-of-flight vs counts.
 
         Parameters
         ----------
@@ -901,15 +833,12 @@ class LaueData(BaseDataModel):
             List of run number(s).
 
         """
-
         filenames = self.file_names(IPTS, runs)
 
         Load(Filename=filenames, OutputWorkspace=event_name)
 
         if self.elastic and self.time_offset is not None:
-            CopyInstrumentParameters(
-                InputWorkspace=self.ref_inst, OutputWorkspace=event_name
-            )
+            CopyInstrumentParameters(InputWorkspace=self.ref_inst, OutputWorkspace=event_name)
             CorelliCrossCorrelate(
                 InputWorkspace=event_name,
                 OutputWorkspace=event_name,
@@ -919,19 +848,12 @@ class LaueData(BaseDataModel):
         self.set_goniometer(event_name)
 
     def calculate_maximum_Q(self):
-        """
-        Update maximum Q.
-
-        """
-
+        """Update maximum Q."""
         lamda_min = np.min(self.wavelength_band)
         self.Q_max = 4 * np.pi / lamda_min * np.sin(self.theta_max)
 
-    def apply_calibration(
-        self, event_name, detector_calibration, tube_calibration=None
-    ):
-        """
-        Apply detector calibration.
+    def apply_calibration(self, event_name, detector_calibration, tube_calibration=None):
+        """Apply detector calibration.
 
         Parameters
         ----------
@@ -943,7 +865,6 @@ class LaueData(BaseDataModel):
             CORELLI-only tube calibration. The default is None.
 
         """
-
         if tube_calibration is not None:
             if not mtd.doesExist("tube_table"):
                 LoadNexus(Filename=tube_calibration, OutputWorkspace="tube_table")
@@ -962,8 +883,7 @@ class LaueData(BaseDataModel):
         self.calculate_maximum_Q()
 
     def preprocess_detectors(self, ws=None):
-        """
-        Generate detector coordinates.
+        """Generate detector coordinates.
 
         Parameters
         ----------
@@ -971,7 +891,6 @@ class LaueData(BaseDataModel):
             Workspace with instrument data.
 
         """
-
         if ws is None:
             ws = self.instrument
 
@@ -984,8 +903,7 @@ class LaueData(BaseDataModel):
             self.theta_max = 0.5 * np.max(two_theta)
 
     def apply_mask(self, event_name, detector_mask):
-        """
-        Apply detector mask.
+        """Apply detector mask.
 
         Parameters
         ----------
@@ -995,7 +913,6 @@ class LaueData(BaseDataModel):
             Detector mask as .xml.
 
         """
-
         if detector_mask is not None and not mtd.doesExist("mask"):
             LoadMask(
                 Instrument=self.ref_inst,
@@ -1008,8 +925,7 @@ class LaueData(BaseDataModel):
             MaskDetectors(Workspace=event_name, MaskedWorkspace="mask")
 
     def create_grouping(self, filename, grouping):
-        """
-        Generate grouping file.
+        """Generate grouping file.
 
         Parameters
         ----------
@@ -1019,7 +935,6 @@ class LaueData(BaseDataModel):
             Grouping pattern (rows)x(cols).
 
         """
-
         grouping = "1x1" if grouping is None else grouping
 
         c, r = [int(val) for val in grouping.split("x")]
@@ -1039,27 +954,19 @@ class LaueData(BaseDataModel):
                     else:
                         grouped_ids[key] = [detector_id]
 
-        header = (
-            '<?xml version="1.0" encoding="UTF-8" ?>\n'
-            + '<detector-grouping instrument="{}">\n'.format(self.ref_inst)
-        )
+        header = '<?xml version="1.0" encoding="UTF-8" ?>\n' + f'<detector-grouping instrument="{self.ref_inst}">\n'
 
         with open(filename, "wt+") as f:
             f.write(header)
             for det_group, ids in enumerate(grouped_ids.values()):
                 det_ids = ",".join(ids)
-                f.write(
-                    '<group name="{}">'.format(det_group)
-                    + '<detids val="{}"/> '.format(det_ids)
-                    + "</group>\n"
-                )
+                f.write(f'<group name="{det_group}">' + f'<detids val="{det_ids}"/> ' + "</group>\n")
             f.write("</detector-grouping>")
 
         self.grouping = filename
 
     def group_pixels(self, filename, ws):
-        """
-        Group pixels with grouping file.
+        """Group pixels with grouping file.
 
         Parameters
         ----------
@@ -1069,12 +976,10 @@ class LaueData(BaseDataModel):
             Workspace name.
 
         """
-
         GroupDetectors(InputWorkspace=ws, MapFile=filename, OutputWorkspace=ws)
 
     def convert_to_Q_sample(self, event_name, md_name, lorentz_corr=False):
-        """
-        Convert raw data to Q-sample.
+        """Convert raw data to Q-sample.
 
         Parameters
         ----------
@@ -1086,7 +991,6 @@ class LaueData(BaseDataModel):
             Apply Lorentz correction. The default is False.
 
         """
-
         self.preprocess_detectors(event_name)
 
         self.calculate_maximum_Q()
@@ -1106,8 +1010,7 @@ class LaueData(BaseDataModel):
             )
 
     def load_generate_normalization(self, vanadium_file, spectrum_file):
-        """
-        Load a vanadium file and generate normalization data.
+        """Load a vanadium file and generate normalization data.
 
         Parameters
         ----------
@@ -1117,7 +1020,6 @@ class LaueData(BaseDataModel):
             Flux file.
 
         """
-
         if not mtd.doesExist("sa"):
             LoadNexus(Filename=vanadium_file, OutputWorkspace="sa")
 
@@ -1136,18 +1038,14 @@ class LaueData(BaseDataModel):
             self.wavelength_band = [lamda_min, lamda_max]
 
     def crop_for_normalization(self, event_name):
-        """
-        Convert units to momentum and crop to wavelength band.
+        """Convert units to momentum and crop to wavelength band.
 
         event_name : str
             Name of raw event data.
 
         """
-
         if mtd.doesExist(event_name):
-            ConvertUnits(
-                InputWorkspace=event_name, OutputWorkspace=event_name, Target="Momentum"
-            )
+            ConvertUnits(InputWorkspace=event_name, OutputWorkspace=event_name, Target="Momentum")
 
             CropWorkspaceForMDNorm(
                 InputWorkspace=event_name,
@@ -1157,8 +1055,7 @@ class LaueData(BaseDataModel):
             )
 
     def load_background(self, filename, event_name, grouping_filename=None):
-        """
-        Load a background file and scale to data.
+        """Load a background file and scale to data.
 
         Parameters
         ----------
@@ -1168,7 +1065,6 @@ class LaueData(BaseDataModel):
             Name of raw event data.
 
         """
-
         if not mtd.doesExist("bkg_mde") and filename is not None:
             Load(Filename=filename, OutputWorkspace="bkg")
 
@@ -1213,8 +1109,7 @@ class LaueData(BaseDataModel):
             )
 
     def normalize_to_Q_sample(self, md, extents, bins):
-        """
-        Histogram data into normalized Q-sample.
+        """Histogram data into normalized Q-sample.
 
         Parameters
         ----------
@@ -1226,7 +1121,6 @@ class LaueData(BaseDataModel):
             Number of bins for each dimension.
 
         """
-
         if mtd.doesExist(md) and mtd.doesExist("sa") and mtd.doesExist("flux"):
             (Q0_min, Q0_max), (Q1_min, Q1_max), (Q2_min, Q2_max) = extents
 
@@ -1243,9 +1137,9 @@ class LaueData(BaseDataModel):
                 RLU=False,
                 SolidAngleWorkspace="sa",
                 FluxWorkspace="flux",
-                Dimension0Binning="{},{},{}".format(Q0_min, dQ0, Q0_max),
-                Dimension1Binning="{},{},{}".format(Q1_min, dQ1, Q1_max),
-                Dimension2Binning="{},{},{}".format(Q2_min, dQ2, Q2_max),
+                Dimension0Binning=f"{Q0_min},{dQ0},{Q0_max}",
+                Dimension1Binning=f"{Q1_min},{dQ1},{Q1_max}",
+                Dimension2Binning=f"{Q2_min},{dQ2},{Q2_max}",
                 OutputWorkspace=md + "_result",
                 OutputDataWorkspace=md + "_data",
                 OutputNormalizationWorkspace=md + "_norm",
@@ -1257,8 +1151,7 @@ class LaueData(BaseDataModel):
             return data, norm, Q0, Q1, Q2
 
     def normalize_to_hkl(self, md, projections, extents, bins, symmetry=None):
-        """
-        Normalizae to binned hkl.
+        """Normalizae to binned hkl.
 
         Parameters
         ----------
@@ -1274,7 +1167,6 @@ class LaueData(BaseDataModel):
             Laue point group. The default is None.
 
         """
-
         if mtd.doesExist(md) and mtd.doesExist("sa") and mtd.doesExist("flux"):
             v0, v1, v2 = projections
 
@@ -1310,9 +1202,9 @@ class LaueData(BaseDataModel):
                 Dimension0Name="QDimension0",
                 Dimension1Name="QDimension1",
                 Dimension2Name="QDimension2",
-                Dimension0Binning="{},{},{}".format(Q0_min, dQ0, Q0_max),
-                Dimension1Binning="{},{},{}".format(Q1_min, dQ1, Q1_max),
-                Dimension2Binning="{},{},{}".format(Q2_min, dQ2, Q2_max),
+                Dimension0Binning=f"{Q0_min},{dQ0},{Q0_max}",
+                Dimension1Binning=f"{Q1_min},{dQ1},{Q1_max}",
+                Dimension2Binning=f"{Q2_min},{dQ2},{Q2_max}",
                 SymmetryOperations=symmetry,
                 TemporaryDataWorkspace=_data,
                 TemporaryNormalizationWorkspace=_norm,

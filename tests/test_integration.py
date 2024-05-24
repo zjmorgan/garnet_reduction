@@ -1,14 +1,13 @@
 import os
-import pytest
-import tempfile
 import shutil
 import subprocess
+import tempfile
 
 import numpy as np
-
-from garnet.reduction.plan import ReductionPlan
-from garnet.reduction.integration import PeakSphere, PeakEllipsoid
+import pytest
 from garnet.config.instruments import beamlines
+from garnet.reduction.integration import PeakEllipsoid, PeakSphere
+from garnet.reduction.plan import ReductionPlan
 
 benchmark = "shared/benchmark/int"
 
@@ -32,7 +31,7 @@ def test_corelli():
         name = instrument_config["Name"]
         baseline_path = os.path.join("/", facility, name, benchmark)
 
-        subprocess.run(command)
+        subprocess.run(command, check=False)
 
         if os.path.exists(baseline_path):
             shutil.rmtree(baseline_path)
@@ -59,7 +58,7 @@ def test_wand2():
         name = instrument_config["Name"]
         baseline_path = os.path.join("/", facility, name, benchmark)
 
-        subprocess.run(command)
+        subprocess.run(command, check=False)
 
         if os.path.exists(baseline_path):
             shutil.rmtree(baseline_path)
@@ -86,7 +85,7 @@ def test_demand():
         name = instrument_config["Name"]
         baseline_path = os.path.join("/", facility, name, benchmark)
 
-        subprocess.run(command)
+        subprocess.run(command, check=False)
 
         if os.path.exists(baseline_path):
             shutil.rmtree(baseline_path)
@@ -177,9 +176,7 @@ def test_ellipsoid():
     radii = params[3:6]
     vectors = params[6:9]
 
-    S = ellipsoid.S_matrix(
-        *ellipsoid.scale(*radii, s=0.25), *ellipsoid.angles(*vectors)
-    )
+    S = ellipsoid.S_matrix(*ellipsoid.scale(*radii, s=0.25), *ellipsoid.angles(*vectors))
 
     s = np.sqrt(np.linalg.det(S))
     sigma = np.sqrt(np.linalg.det(cov))
@@ -232,9 +229,7 @@ def test_ellipsoid_methods():
     mu_u, mu_v, sigma_u, sigma_v, rho = 2, 3, 0.4, 0.5, 0.1
 
     y = ellipsoid.projection(xu, xv, A, B, mu_u, mu_v, sigma_u, sigma_v, rho)
-    ypu, ypv = ellipsoid.projection_grad(
-        xu, xv, A, B, mu_u, mu_v, sigma_u, sigma_v, rho
-    )
+    ypu, ypv = ellipsoid.projection_grad(xu, xv, A, B, mu_u, mu_v, sigma_u, sigma_v, rho)
 
     grad_yu, grad_yv = np.gradient(y, dxu, dxv)
 

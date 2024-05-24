@@ -1,14 +1,10 @@
-from mantid.simpleapi import CreatePeaksWorkspace, SetUB, AddPeakHKL
-
 import numpy as np
-
 from garnet.reduction.ub import Optimization
+from mantid.simpleapi import AddPeakHKL, CreatePeaksWorkspace, SetUB
 
 
 def create_peaks(name, a, b, c, alpha, beta, gamma):
-    CreatePeaksWorkspace(
-        NumberOfPeaks=0, OutputType="LeanElasticPeak", OutputWorkspace=name
-    )
+    CreatePeaksWorkspace(NumberOfPeaks=0, OutputType="LeanElasticPeak", OutputWorkspace=name)
 
     SetUB(Workspace=name, a=a, b=b, c=c, alpha=alpha, beta=beta, gamma=gamma)
 

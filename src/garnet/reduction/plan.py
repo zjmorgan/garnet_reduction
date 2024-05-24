@@ -1,4 +1,5 @@
 import os
+
 import yaml
 
 from garnet.config.instruments import beamlines
@@ -13,8 +14,7 @@ Dumper.add_representer(list, Dumper.represent_list)
 
 
 def save_YAML(output, filename):
-    """
-    Save reduction output file.
+    """Save reduction output file.
 
     Parameters
     ----------
@@ -63,8 +63,7 @@ class ReductionPlan:
             assert os.path.splitext(detcal)[1].lower() in [".xml", ".detcal"]
 
     def set_output(self, filename):
-        """
-        Change the output directory and name.
+        """Change the output directory and name.
 
         Parameters
         ----------
@@ -72,7 +71,6 @@ class ReductionPlan:
             yaml file of reduction plan.
 
         """
-
         path = os.path.dirname(os.path.abspath(filename))
         name = os.path.splitext(os.path.basename(filename))[0]
 
@@ -80,8 +78,7 @@ class ReductionPlan:
         self.plan["OutputName"] = name
 
     def load_plan(self, filename):
-        """
-        Load a data reduction plan.
+        """Load a data reduction plan.
 
         Parameters
         ----------
@@ -89,7 +86,6 @@ class ReductionPlan:
             yaml file of reduction plan.
 
         """
-
         with open(filename, "r") as f:
             self.plan = yaml.safe_load(f)
 
@@ -101,8 +97,7 @@ class ReductionPlan:
             self.plan["Runs"] = self.runs_string_to_list(runs)
 
     def save_plan(self, filename):
-        """
-        Save a data reduction plan.
+        """Save a data reduction plan.
 
         Parameters
         ----------
@@ -110,7 +105,6 @@ class ReductionPlan:
             yaml file of reduction plan.
 
         """
-
         if self.plan is not None:
             self.set_output(filename)
             runs = self.plan["Runs"]
@@ -120,8 +114,7 @@ class ReductionPlan:
             save_YAML(self.plan, filename)
 
     def runs_string_to_list(self, runs_str):
-        """
-        Convert runs string to list.
+        """Convert runs string to list.
 
         Parameters
         ----------
@@ -134,7 +127,6 @@ class ReductionPlan:
             Integer run numbers.
 
         """
-
         ranges = runs_str.split(",")
         runs = []
         for part in ranges:
@@ -146,8 +138,7 @@ class ReductionPlan:
         return runs
 
     def runs_list_to_string(self, runs):
-        """
-        Convert runs list to string.
+        """Convert runs list to string.
 
         Parameters
         ----------
@@ -160,7 +151,6 @@ class ReductionPlan:
             Condensed notation for run numbers.
 
         """
-
         if not runs:
             return ""
 
@@ -173,21 +163,20 @@ class ReductionPlan:
                 if range_start == runs[i - 1]:
                     result.append(str(range_start))
                 else:
-                    result.append("{}:{}".format(range_start, runs[i - 1]))
+                    result.append(f"{range_start}:{runs[i - 1]}")
                 range_start = runs[i]
 
         if range_start == runs[-1]:
             result.append(str(range_start))
         else:
-            result.append("{}:{}".format(range_start, runs[-1]))
+            result.append(f"{range_start}:{runs[-1]}")
 
         run_str = ",".join(result)
 
         return run_str
 
     def generate_plan(self, instrument):
-        """
-        Create a template plan.
+        """Create a template plan.
 
         Parameters
         ----------
@@ -195,7 +184,6 @@ class ReductionPlan:
             Beamline name.
 
         """
-
         plan = {}
 
         assert instrument in beamlines.keys()
@@ -222,10 +210,7 @@ class ReductionPlan:
             plan["DetectorCalibration"] = None
 
         if instrument == "CORELLI":
-            plan["TubeCalibration"] = (
-                "/SNS/CORELLI/shared/calibration/tube"
-                + "/calibration_corelli_20200109.nxs.h5"
-            )
+            plan["TubeCalibration"] = "/SNS/CORELLI/shared/calibration/tube" + "/calibration_corelli_20200109.nxs.h5"
             plan["Elastic"] = False
             plan["TimeOffset"] = None
 
@@ -235,8 +220,7 @@ class ReductionPlan:
         self.plan["Normalization"] = self.template_normalization()
 
     def template_integration(self, instrument):
-        """
-        Generate template integration plan.
+        """Generate template integration plan.
 
         Parameters
         ----------
@@ -249,7 +233,6 @@ class ReductionPlan:
             Integration plan.
 
         """
-
         inst_config = beamlines[instrument]
 
         wl = inst_config["Wavelength"]
@@ -269,8 +252,7 @@ class ReductionPlan:
         return params
 
     def template_normalization(self):
-        """
-        Generate template integration plan.
+        """Generate template integration plan.
 
         Parameters
         ----------
@@ -283,7 +265,6 @@ class ReductionPlan:
             Integration plan.
 
         """
-
         params = {}
         params["Symmetry"] = None
         params["Projections"] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]

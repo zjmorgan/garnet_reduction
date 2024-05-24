@@ -1,12 +1,13 @@
-import sys
-import os
 import concurrent.futures
+import os
+import sys
+
 from mantid import config
 
-from garnet.reduction.plan import ReductionPlan
-from garnet.reduction.parallel import ParallelTasks
 from garnet.reduction.integration import Integration
 from garnet.reduction.normalization import Normalization
+from garnet.reduction.parallel import ParallelTasks
+from garnet.reduction.plan import ReductionPlan
 
 directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(directory)

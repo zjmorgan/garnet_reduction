@@ -1,12 +1,11 @@
 import os
-import numpy as np
 
+import numpy as np
 import scipy.linalg
 import scipy.spatial
-
-from garnet.reduction.integration import PeakSphere, PeakEllipsoid
-from garnet.plots.peaks import RadiusPlot, PeakPlot
+from garnet.plots.peaks import PeakPlot, RadiusPlot
 from garnet.plots.volume import SlicePlot
+from garnet.reduction.integration import PeakEllipsoid, PeakSphere
 
 filepath = os.path.dirname(os.path.abspath(__file__))
 
@@ -143,9 +142,7 @@ def test_peak_plot():
 
     m = 1
 
-    i, j, k = np.array(
-        np.meshgrid(np.arange(nx), np.arange(ny), np.arange(nz), indexing="ij")
-    ).reshape(3, -1)
+    i, j, k = np.array(np.meshgrid(np.arange(nx), np.arange(ny), np.arange(nz), indexing="ij")).reshape(3, -1)
 
     i_min = np.clip(i - m, 0, nx)
     i_max = np.clip(i + m + 1, 0, nx)
