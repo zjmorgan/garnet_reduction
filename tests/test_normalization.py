@@ -1,7 +1,5 @@
 import os
-import shutil
 import subprocess
-import tempfile
 
 from garnet.config.instruments import beamlines
 from garnet.reduction.normalization import Normalization
@@ -44,13 +42,13 @@ def test_corelli(tmpdir):
     config_file = "corelli_reduction_plan.yaml"
     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
     script = os.path.abspath("./src/garnet/workflow.py")
-    print("tmpdir",tmpdir)
+    print("tmpdir", tmpdir)
     # reduction plan filepaths point to analysis
-    print("reduction_plan",reduction_plan)
+    print("reduction_plan", reduction_plan)
     rp = ReductionPlan()
     rp.load_plan(reduction_plan)
     saved_plan = os.path.join(tmpdir, config_file)
-    print("saved_plan",saved_plan)
+    print("saved_plan", saved_plan)
     rp.set_output(saved_plan)
     rp.save_plan(saved_plan)
 
@@ -58,16 +56,17 @@ def test_corelli(tmpdir):
     facility = instrument_config["Facility"]
     name = instrument_config["Name"]
     baseline_path = os.path.join("/", facility, name, benchmark)
-    print("baseline_path",baseline_path)
+    print("baseline_path", baseline_path)
     command = ["python", script, saved_plan, "norm", "3"]
     subprocess.run(command, check=False)
 
-    #if os.path.exists(baseline_path):
+    # if os.path.exists(baseline_path):
     #    shutil.rmtree(baseline_path)
 
-    #shutil.copytree(tmpdir, baseline_path)
+    # shutil.copytree(tmpdir, baseline_path)
 
-#cannot run
+
+# cannot run
 # def test_topaz(tmpdir):
 #     config_file = "topaz_reduction_plan.yaml"
 #     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
@@ -89,18 +88,17 @@ def test_corelli(tmpdir):
 #     command = ["python", script, saved_plan, "norm", "2"]
 #     subprocess.run(command, check=False)
 
-        # if os.path.exists(baseline_path):
-        #     shutil.rmtree(baseline_path)
+# if os.path.exists(baseline_path):
+#     shutil.rmtree(baseline_path)
 
-        # shutil.copytree(tmpdir, baseline_path)
+# shutil.copytree(tmpdir, baseline_path)
 
-#laptop freezes!
+# laptop freezes!
 # def test_demand(tmpdir):
 #     config_file = "demand_reduction_plan.yaml"
 #     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
 #     script = os.path.abspath("./src/garnet/workflow.py")
 #     command = ["python", script, config_file, "norm", "4"]
-
 
 
 #     rp = ReductionPlan()
@@ -118,12 +116,12 @@ def test_corelli(tmpdir):
 #     command = ["python", script, saved_plan, "norm", "2"]
 #     subprocess.run(command, check=False)
 
-        # if os.path.exists(baseline_path):
-        #     shutil.rmtree(baseline_path)
+# if os.path.exists(baseline_path):
+#     shutil.rmtree(baseline_path)
 
-        # shutil.copytree(tmpdir, baseline_path)
+# shutil.copytree(tmpdir, baseline_path)
 
-#check this too
+# check this too
 # def test_wand2(tmpdir):
 #     config_file = "wand2_reduction_plan.yaml"
 #     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
@@ -145,7 +143,7 @@ def test_corelli(tmpdir):
 #     command = ["python", script, saved_plan, "norm", "48"]
 #     subprocess.run(command, check=False)
 
-        # if os.path.exists(baseline_path):
-        #     shutil.rmtree(baseline_path)
+# if os.path.exists(baseline_path):
+#     shutil.rmtree(baseline_path)
 
-        # shutil.copytree(tmpdir, baseline_path)
+# shutil.copytree(tmpdir, baseline_path)
