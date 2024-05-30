@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+import pytest
 from garnet.reduction.integration import Integration
 from garnet.reduction.normalization import Normalization
 from garnet.reduction.plan import ReductionPlan
@@ -22,7 +23,12 @@ def test_runs():
     assert garnet_plan.runs_list_to_string(runs) == "345:347,349:352"
 
 
-def test_load_plan():
+@pytest.mark.mount_sns
+def test_load_plan(has_sns_mount):
+    print("has_sns_mount", has_sns_mount)
+    if not has_sns_mount:
+        pytest.skip("Test is skipped. SNS mount is not available.")
+
     garnet_plan = ReductionPlan()
 
     reduction_plan = os.path.join(filepath, "data/corelli_reduction_plan.yaml")
@@ -36,7 +42,11 @@ def test_load_plan():
     assert os.path.splitext(plan["DetectorCalibration"])[1] == ".xml"
 
 
-def test_save_plan():
+@pytest.mark.mount_sns
+def test_save_plan(has_sns_mount):
+    if not has_sns_mount:
+        pytest.skip("Test is skipped. SNS mount is not available.")
+
     garnet_plan = ReductionPlan()
 
     reduction_plan = os.path.join(filepath, "data/corelli_reduction_plan.yaml")
@@ -65,7 +75,11 @@ def test_save_plan():
         assert tmp_garnet_plan.plan["OutputPath"] == tmpdir
 
 
-def test_integration_plan():
+@pytest.mark.mount_sns
+def test_integration_plan(has_sns_mount):
+    if not has_sns_mount:
+        pytest.skip("Test is skipped. SNS mount is not available.")
+
     garnet_plan = ReductionPlan()
 
     reduction_plan = os.path.join(filepath, "data/corelli_reduction_plan.yaml")
@@ -91,7 +105,11 @@ def test_integration_plan():
     assert integrate is not None
 
 
-def test_normalization_plan():
+@pytest.mark.mount_sns
+def test_normalization_plan(has_sns_mount):
+    if not has_sns_mount:
+        pytest.skip("Test is skipped. SNS mount is not available.")
+
     garnet_plan = ReductionPlan()
 
     reduction_plan = os.path.join(filepath, "data/corelli_reduction_plan.yaml")
