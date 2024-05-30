@@ -176,7 +176,7 @@ def test_ellipsoid():
     radii = params[3:6]
     vectors = params[6:9]
 
-    S = ellipsoid.S_matrix(*ellipsoid.scale(*radii, s=0.25), *ellipsoid.angles(*vectors))
+    S = ellipsoid.S_matrix(*ellipsoid.scale(*radii), *ellipsoid.angles(*vectors))
 
     s = np.sqrt(np.linalg.det(S))
     sigma = np.sqrt(np.linalg.det(cov))

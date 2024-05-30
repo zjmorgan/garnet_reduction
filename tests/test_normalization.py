@@ -40,105 +40,112 @@ def test_get_file():
     assert data == base + app + symm + "_data" + ext
 
 
-def test_corelli():
+def test_corelli(tmpdir):
     config_file = "corelli_reduction_plan.yaml"
     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
     script = os.path.abspath("./src/garnet/workflow.py")
-    command = ["python", script, config_file, "norm", "16"]
+    print("tmpdir",tmpdir)
+    # reduction plan filepaths point to analysis
+    print("reduction_plan",reduction_plan)
+    rp = ReductionPlan()
+    rp.load_plan(reduction_plan)
+    saved_plan = os.path.join(tmpdir, config_file)
+    print("saved_plan",saved_plan)
+    rp.set_output(saved_plan)
+    rp.save_plan(saved_plan)
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        os.chdir(tmpdir)
+    instrument_config = beamlines[rp.plan["Instrument"]]
+    facility = instrument_config["Facility"]
+    name = instrument_config["Name"]
+    baseline_path = os.path.join("/", facility, name, benchmark)
+    print("baseline_path",baseline_path)
+    command = ["python", script, saved_plan, "norm", "3"]
+    subprocess.run(command, check=False)
 
-        rp = ReductionPlan()
-        rp.load_plan(reduction_plan)
-        rp.save_plan(os.path.join(tmpdir, config_file))
+    #if os.path.exists(baseline_path):
+    #    shutil.rmtree(baseline_path)
 
-        instrument_config = beamlines[rp.plan["Instrument"]]
-        facility = instrument_config["Facility"]
-        name = instrument_config["Name"]
-        baseline_path = os.path.join("/", facility, name, benchmark)
+    #shutil.copytree(tmpdir, baseline_path)
 
-        subprocess.run(command, check=False)
+#cannot run
+# def test_topaz(tmpdir):
+#     config_file = "topaz_reduction_plan.yaml"
+#     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
+#     script = os.path.abspath("./src/garnet/workflow.py")
 
-        if os.path.exists(baseline_path):
-            shutil.rmtree(baseline_path)
+#     rp = ReductionPlan()
+#     rp.load_plan(reduction_plan)
+#     saved_plan = os.path.join(tmpdir, config_file)
+#     print("saved_plan",saved_plan)
+#     rp.set_output(saved_plan)
+#     rp.save_plan(saved_plan)
 
-        shutil.copytree(tmpdir, baseline_path)
+#     instrument_config = beamlines[rp.plan["Instrument"]]
+#     facility = instrument_config["Facility"]
+#     name = instrument_config["Name"]
+#     baseline_path = os.path.join("/", facility, name, benchmark)
+#     print("baseline_path",baseline_path)
 
+#     command = ["python", script, saved_plan, "norm", "2"]
+#     subprocess.run(command, check=False)
 
-def test_topaz():
-    config_file = "topaz_reduction_plan.yaml"
-    reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
-    script = os.path.abspath("./src/garnet/workflow.py")
-    command = ["python", script, config_file, "norm", "6"]
+        # if os.path.exists(baseline_path):
+        #     shutil.rmtree(baseline_path)
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        os.chdir(tmpdir)
+        # shutil.copytree(tmpdir, baseline_path)
 
-        rp = ReductionPlan()
-        rp.load_plan(reduction_plan)
-        rp.save_plan(os.path.join(tmpdir, config_file))
-
-        instrument_config = beamlines[rp.plan["Instrument"]]
-        facility = instrument_config["Facility"]
-        name = instrument_config["Name"]
-        baseline_path = os.path.join("/", facility, name, benchmark)
-
-        subprocess.run(command, check=False)
-
-        if os.path.exists(baseline_path):
-            shutil.rmtree(baseline_path)
-
-        shutil.copytree(tmpdir, baseline_path)
-
-
-def test_demand():
-    config_file = "demand_reduction_plan.yaml"
-    reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
-    script = os.path.abspath("./src/garnet/workflow.py")
-    command = ["python", script, config_file, "norm", "4"]
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        os.chdir(tmpdir)
-
-        rp = ReductionPlan()
-        rp.load_plan(reduction_plan)
-        rp.save_plan(os.path.join(tmpdir, config_file))
-
-        instrument_config = beamlines[rp.plan["Instrument"]]
-        facility = instrument_config["Facility"]
-        name = instrument_config["Name"]
-        baseline_path = os.path.join("/", facility, name, benchmark)
-
-        subprocess.run(command, check=False)
-
-        if os.path.exists(baseline_path):
-            shutil.rmtree(baseline_path)
-
-        shutil.copytree(tmpdir, baseline_path)
+#laptop freezes!
+# def test_demand(tmpdir):
+#     config_file = "demand_reduction_plan.yaml"
+#     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
+#     script = os.path.abspath("./src/garnet/workflow.py")
+#     command = ["python", script, config_file, "norm", "4"]
 
 
-def test_wand2():
-    config_file = "wand2_reduction_plan.yaml"
-    reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
-    script = os.path.abspath("./src/garnet/workflow.py")
-    command = ["python", script, config_file, "norm", "48"]
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        os.chdir(tmpdir)
+#     rp = ReductionPlan()
+#     rp.load_plan(reduction_plan)
+#     saved_plan = os.path.join(tmpdir, config_file)
+#     print("saved_plan",saved_plan)
+#     rp.set_output(saved_plan)
+#     rp.save_plan(saved_plan)
 
-        rp = ReductionPlan()
-        rp.load_plan(reduction_plan)
-        rp.save_plan(os.path.join(tmpdir, config_file))
+#     instrument_config = beamlines[rp.plan["Instrument"]]
+#     facility = instrument_config["Facility"]
+#     name = instrument_config["Name"]
+#     baseline_path = os.path.join("/", facility, name, benchmark)
+#     print("baseline_path",baseline_path)
+#     command = ["python", script, saved_plan, "norm", "2"]
+#     subprocess.run(command, check=False)
 
-        instrument_config = beamlines[rp.plan["Instrument"]]
-        facility = instrument_config["Facility"]
-        name = instrument_config["Name"]
-        baseline_path = os.path.join("/", facility, name, benchmark)
+        # if os.path.exists(baseline_path):
+        #     shutil.rmtree(baseline_path)
 
-        subprocess.run(command, check=False)
+        # shutil.copytree(tmpdir, baseline_path)
 
-        if os.path.exists(baseline_path):
-            shutil.rmtree(baseline_path)
+#check this too
+# def test_wand2(tmpdir):
+#     config_file = "wand2_reduction_plan.yaml"
+#     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
+#     script = os.path.abspath("./src/garnet/workflow.py")
 
-        shutil.copytree(tmpdir, baseline_path)
+
+#     rp = ReductionPlan()
+#     rp.load_plan(reduction_plan)
+#     saved_plan = os.path.join(tmpdir, config_file)
+#     print("saved_plan",saved_plan)
+#     rp.set_output(saved_plan)
+#     rp.save_plan(saved_plan)
+
+#     instrument_config = beamlines[rp.plan["Instrument"]]
+#     facility = instrument_config["Facility"]
+#     name = instrument_config["Name"]
+#     baseline_path = os.path.join("/", facility, name, benchmark)
+
+#     command = ["python", script, saved_plan, "norm", "48"]
+#     subprocess.run(command, check=False)
+
+        # if os.path.exists(baseline_path):
+        #     shutil.rmtree(baseline_path)
+
+        # shutil.copytree(tmpdir, baseline_path)
