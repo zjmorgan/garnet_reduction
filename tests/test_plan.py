@@ -9,6 +9,7 @@ from garnet.reduction.plan import ReductionPlan
 filepath = os.path.dirname(os.path.abspath(__file__))
 
 
+@pytest.mark.resources_intensive
 def test_runs():
     garnet_plan = ReductionPlan()
 
@@ -25,7 +26,6 @@ def test_runs():
 
 @pytest.mark.mount_sns
 def test_load_plan(has_sns_mount):
-    print("has_sns_mount", has_sns_mount)
     if not has_sns_mount:
         pytest.skip("Test is skipped. SNS mount is not available.")
 

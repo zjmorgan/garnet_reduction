@@ -41,6 +41,7 @@ class ReductionPlan:
 
         if self.plan.get("UBFile") is not None:
             UB = self.plan["UBFile"]
+            print("UB", UB)
             assert os.path.exists(UB)
             assert os.path.splitext(UB)[1] == ".mat"
 

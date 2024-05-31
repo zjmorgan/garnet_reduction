@@ -51,7 +51,7 @@ ignore = ["D203", # conflict with D211
 
 [tool.pytest.ini_options]
 markers = [
-    "long_execution_time: mark test as having a long execution time",
+    "resources_intensive: mark test as using a lot of computing resources: CPU, memory, etc.",
     "mount_sns: mark a test as using /SNS/ data mount",
     "mount_hfir: mark a test as using /HFIR/ data mount"
     ]
