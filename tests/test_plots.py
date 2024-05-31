@@ -10,7 +10,7 @@ from garnet.reduction.integration import PeakEllipsoid, PeakSphere
 filepath = os.path.dirname(os.path.abspath(__file__))
 
 
-def test_slice_plot():
+def test_slice_plot(tmpdir):
     np.random.seed(13)
 
     U = scipy.spatial.transform.Rotation.random().as_matrix()
@@ -47,20 +47,20 @@ def test_slice_plot():
     plot = SlicePlot(UB, W)
     params = plot.calculate_transforms(signal, axes, ["h", "k", "l"], [0, 0, 1], 0)
     plot.make_slice(*params)
-    plot.save_plot(os.path.join(filepath, "slice2.png"))
+    plot.save_plot(os.path.join(tmpdir, "slice2.png"))
 
     plot = SlicePlot(UB, W)
     params = plot.calculate_transforms(signal, axes, ["h", "k", "l"], [0, 1, 0], 0)
     plot.make_slice(*params)
-    plot.save_plot(os.path.join(filepath, "slice1.png"))
+    plot.save_plot(os.path.join(tmpdir, "slice1.png"))
 
     plot = SlicePlot(UB, W)
     params = plot.calculate_transforms(signal, axes, ["h", "k", "l"], [1, 0, 0], 0)
     plot.make_slice(*params)
-    plot.save_plot(os.path.join(filepath, "slice0.png"))
+    plot.save_plot(os.path.join(tmpdir, "slice0.png"))
 
 
-def test_radius_plot():
+def test_radius_plot(tmpdir):
     r_cut = 0.25
 
     A = 1.2
@@ -80,10 +80,10 @@ def test_radius_plot():
 
     plot.add_sphere(radius, *vals)
 
-    plot.save_plot(os.path.join(filepath, "sphere.png"))
+    plot.save_plot(os.path.join(tmpdir, "sphere.png"))
 
 
-def test_peak_plot():
+def test_peak_plot(tmpdir):
     np.random.seed(13)
 
     nx, ny, nz = 21, 24, 29
@@ -186,7 +186,7 @@ def test_peak_plot():
     plot.add_ellipsoid(c, S, W, vals)
     plot.add_peak_intensity(intens, sig_noise)
 
-    file = os.path.join(filepath, "ellipsoid.png")
+    file = os.path.join(tmpdir, "ellipsoid.png")
 
     # if os.path.exists(file):
     #     os.remove(file)
