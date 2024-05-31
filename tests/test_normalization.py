@@ -54,10 +54,6 @@ def test_corelli(tmpdir, has_sns_mount):
     rp.set_output(saved_plan)
     rp.save_plan(saved_plan)
 
-    # instrument_config = beamlines[rp.plan["Instrument"]]
-    # facility = instrument_config["Facility"]
-    # name = instrument_config["Name"]
-    # baseline_path = os.path.join("/", facility, name, benchmark)
     command = ["python", script, saved_plan, "norm", "3"]
     subprocess.run(command, check=False)
 
@@ -75,15 +71,8 @@ def test_topaz(tmpdir, has_sns_mount):
     rp = ReductionPlan()
     rp.load_plan(reduction_plan)
     saved_plan = os.path.join(tmpdir, config_file)
-    # print("saved_plan", saved_plan)
     rp.set_output(saved_plan)
     rp.save_plan(saved_plan)
-
-    # instrument_config = beamlines[rp.plan["Instrument"]]
-    # facility = instrument_config["Facility"]
-    # name = instrument_config["Name"]
-    # baseline_path = os.path.join("/", facility, name, benchmark)
-    # print("baseline_path", baseline_path)
 
     command = ["python", script, saved_plan, "norm", "6"]
     subprocess.run(command, check=False)
@@ -102,15 +91,9 @@ def test_demand(tmpdir, has_hfir_mount):
     rp = ReductionPlan()
     rp.load_plan(reduction_plan)
     saved_plan = os.path.join(tmpdir, config_file)
-    # print("saved_plan", saved_plan)
     rp.set_output(saved_plan)
     rp.save_plan(saved_plan)
 
-    # instrument_config = beamlines[rp.plan["Instrument"]]
-    # facility = instrument_config["Facility"]
-    # name = instrument_config["Name"]
-    # baseline_path = os.path.join("/", facility, name, benchmark)
-    # print("baseline_path", baseline_path)
     command = ["python", script, saved_plan, "norm", "4"]
     subprocess.run(command, check=False)
 
@@ -128,14 +111,8 @@ def test_wand2(tmpdir, has_hfir_mount):
     rp = ReductionPlan()
     rp.load_plan(reduction_plan)
     saved_plan = os.path.join(tmpdir, config_file)
-    # print("saved_plan", saved_plan)
     rp.set_output(saved_plan)
     rp.save_plan(saved_plan)
 
-    # instrument_config = beamlines[rp.plan["Instrument"]]
-    # facility = instrument_config["Facility"]
-    # name = instrument_config["Name"]
-    # baseline_path = os.path.join("/", facility, name, benchmark)
-    # print("baseline_path", baseline_path)
     command = ["python", script, saved_plan, "norm", "48"]
     subprocess.run(command, check=False)

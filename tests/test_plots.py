@@ -7,8 +7,6 @@ from garnet.plots.peaks import PeakPlot, RadiusPlot
 from garnet.plots.volume import SlicePlot
 from garnet.reduction.integration import PeakEllipsoid, PeakSphere
 
-filepath = os.path.dirname(os.path.abspath(__file__))
-
 
 def test_slice_plot(tmpdir):
     np.random.seed(13)
@@ -47,17 +45,23 @@ def test_slice_plot(tmpdir):
     plot = SlicePlot(UB, W)
     params = plot.calculate_transforms(signal, axes, ["h", "k", "l"], [0, 0, 1], 0)
     plot.make_slice(*params)
-    plot.save_plot(os.path.join(tmpdir, "slice2.png"))
+    slice2 = os.path.join(tmpdir, "slice2.png")
+    plot.save_plot(slice2)
+    assert os.path.exists(slice2)
 
     plot = SlicePlot(UB, W)
     params = plot.calculate_transforms(signal, axes, ["h", "k", "l"], [0, 1, 0], 0)
     plot.make_slice(*params)
-    plot.save_plot(os.path.join(tmpdir, "slice1.png"))
+    slice1 = os.path.join(tmpdir, "slice1.png")
+    plot.save_plot(slice1)
+    assert os.path.exists(slice1)
 
     plot = SlicePlot(UB, W)
     params = plot.calculate_transforms(signal, axes, ["h", "k", "l"], [1, 0, 0], 0)
     plot.make_slice(*params)
-    plot.save_plot(os.path.join(tmpdir, "slice0.png"))
+    slice0 = os.path.join(tmpdir, "slice0.png")
+    plot.save_plot(slice0)
+    assert os.path.exists(slice0)
 
 
 def test_radius_plot(tmpdir):
@@ -80,7 +84,9 @@ def test_radius_plot(tmpdir):
 
     plot.add_sphere(radius, *vals)
 
-    plot.save_plot(os.path.join(tmpdir, "sphere.png"))
+    sphere = os.path.join(tmpdir, "sphere.png")
+    plot.save_plot(sphere)
+    assert os.path.exists(sphere)
 
 
 def test_peak_plot(tmpdir):
@@ -187,10 +193,6 @@ def test_peak_plot(tmpdir):
     plot.add_peak_intensity(intens, sig_noise)
 
     file = os.path.join(tmpdir, "ellipsoid.png")
-
-    # if os.path.exists(file):
-    #     os.remove(file)
-
     plot.save_plot(file)
 
     assert os.path.exists(file)
