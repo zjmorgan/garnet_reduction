@@ -8,7 +8,6 @@ from garnet.reduction.plan import ReductionPlan
 filepath = os.path.dirname(os.path.abspath(__file__))
 
 
-@pytest.mark.resources_intensive
 def test_runs():
     garnet_plan = ReductionPlan()
 
