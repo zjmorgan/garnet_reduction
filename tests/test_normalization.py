@@ -54,7 +54,7 @@ def test_corelli(tmpdir, has_sns_mount):
     rp.set_output(saved_plan)
     rp.save_plan(saved_plan)
 
-    command = ["python", script, saved_plan, "norm", "3"]
+    command = ["python", script, saved_plan, "norm", "16"]
     subprocess.run(command, check=False)
 
 
