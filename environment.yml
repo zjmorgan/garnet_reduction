@@ -10,7 +10,9 @@ dependencies:
   - matplotlib
   - pycifrw
   - pre-commit
+  - pytest
+  - pytest-qt
+  - pytest-cov
   - h5py
   - lmfit
   - mantidworkbench
-  - pytest
