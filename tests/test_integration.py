@@ -8,7 +8,7 @@ from garnet.reduction.plan import ReductionPlan
 
 benchmark = "shared/benchmark/int"
 
-
+@pytest.mark.resources_intensive
 @pytest.mark.mount_sns
 def test_corelli(tmpdir, has_sns_mount):
     if not has_sns_mount:
