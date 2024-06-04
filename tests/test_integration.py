@@ -13,7 +13,7 @@ benchmark = "shared/benchmark/int"
 @pytest.mark.mount_sns
 def test_corelli(tmpdir, has_sns_mount):
     if not has_sns_mount:
-        pytest.skip("Test is skipped. HFIR mount is not available.")
+        pytest.skip("Test is skipped. SNS mount is not available.")
 
     config_file = "corelli_reduction_plan.yaml"
     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
