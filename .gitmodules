@@ -1,0 +1,6 @@
+[submodule "tests/data/garnet-data"]
+	path = tests/data/garnet-data
+	url = https://code.ornl.gov/sns-hfir-scse/infrastructure/test-data/garnet-data.git
+	branch = main
+[submodule "garnet-data"]
+	update = merge

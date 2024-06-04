@@ -59,7 +59,7 @@ class Normalization:
         data.update_raw_path(self.plan)
 
         runs = self.plan["Runs"]
-
+        grouping_file = ""
         if data.laue:
             grouping_file = diag_file.replace(".nxs", ".xml")
 
@@ -152,7 +152,8 @@ class Normalization:
 
         mtd.clear()
 
-        os.remove(grouping_file)
+        if grouping_file and os.path.exists(grouping_file):
+            os.remove(grouping_file)
 
         return output_file
 

@@ -1,96 +1,71 @@
 import os
-import shutil
 import subprocess
-import tempfile
 
 import numpy as np
 import pytest
-from garnet.config.instruments import beamlines
 from garnet.reduction.integration import PeakEllipsoid, PeakSphere
 from garnet.reduction.plan import ReductionPlan
 
 benchmark = "shared/benchmark/int"
 
 
-@pytest.mark.skipif(not os.path.exists("/SNS/CORELLI/"), reason="file mount")
-def test_corelli():
+@pytest.mark.resources_intensive
+@pytest.mark.mount_sns
+def test_corelli(tmpdir, has_sns_mount):
+    if not has_sns_mount:
+        pytest.skip("Test is skipped. SNS mount is not available.")
+
     config_file = "corelli_reduction_plan.yaml"
     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
     script = os.path.abspath("./src/garnet/workflow.py")
     command = ["python", script, config_file, "int", "16"]
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        os.chdir(tmpdir)
+    rp = ReductionPlan()
+    rp.load_plan(reduction_plan)
+    saved_plan = os.path.join(tmpdir, config_file)
+    rp.set_output(saved_plan)
+    rp.save_plan(saved_plan)
 
-        rp = ReductionPlan()
-        rp.load_plan(reduction_plan)
-        rp.save_plan(os.path.join(tmpdir, config_file))
-
-        instrument_config = beamlines[rp.plan["Instrument"]]
-        facility = instrument_config["Facility"]
-        name = instrument_config["Name"]
-        baseline_path = os.path.join("/", facility, name, benchmark)
-
-        subprocess.run(command, check=False)
-
-        if os.path.exists(baseline_path):
-            shutil.rmtree(baseline_path)
-
-        shutil.copytree(tmpdir, baseline_path)
+    command = ["python", script, saved_plan, "int", "16"]
+    subprocess.run(command, check=False)
 
 
-@pytest.mark.skipif(not os.path.exists("/HFIR/HB2C/"), reason="file mount")
-def test_wand2():
+@pytest.mark.mount_hfir
+def test_wand2(tmpdir, has_hfir_mount):
+    if not has_hfir_mount:
+        pytest.skip("Test is skipped. HFIR mount is not available.")
+
     config_file = "wand2_reduction_plan.yaml"
     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
     script = os.path.abspath("./src/garnet/workflow.py")
-    command = ["python", script, config_file, "int", "4"]
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        os.chdir(tmpdir)
+    rp = ReductionPlan()
+    rp.load_plan(reduction_plan)
+    saved_plan = os.path.join(tmpdir, config_file)
+    rp.set_output(saved_plan)
+    rp.save_plan(saved_plan)
 
-        rp = ReductionPlan()
-        rp.load_plan(reduction_plan)
-        rp.save_plan(os.path.join(tmpdir, config_file))
-
-        instrument_config = beamlines[rp.plan["Instrument"]]
-        facility = instrument_config["Facility"]
-        name = instrument_config["Name"]
-        baseline_path = os.path.join("/", facility, name, benchmark)
-
-        subprocess.run(command, check=False)
-
-        if os.path.exists(baseline_path):
-            shutil.rmtree(baseline_path)
-
-        shutil.copytree(tmpdir, baseline_path)
+    command = ["python", script, saved_plan, "int", "4"]
+    subprocess.run(command, check=False)
 
 
-@pytest.mark.skipif(not os.path.exists("/HFIR/HB3A/"), reason="file mount")
-def test_demand():
+@pytest.mark.mount_hfir
+def test_demand(tmpdir, has_hfir_mount):
+    if not has_hfir_mount:
+        pytest.skip("Test is skipped. HFIR mount is not available.")
+
     config_file = "demand_reduction_plan.yaml"
     reduction_plan = os.path.abspath(os.path.join("./tests/data", config_file))
     script = os.path.abspath("./src/garnet/workflow.py")
-    command = ["python", script, config_file, "int", "4"]
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        os.chdir(tmpdir)
+    rp = ReductionPlan()
+    rp.load_plan(reduction_plan)
+    saved_plan = os.path.join(tmpdir, config_file)
+    rp.set_output(saved_plan)
+    rp.save_plan(saved_plan)
 
-        rp = ReductionPlan()
-        rp.load_plan(reduction_plan)
-        rp.save_plan(os.path.join(tmpdir, config_file))
-
-        instrument_config = beamlines[rp.plan["Instrument"]]
-        facility = instrument_config["Facility"]
-        name = instrument_config["Name"]
-        baseline_path = os.path.join("/", facility, name, benchmark)
-
-        subprocess.run(command, check=False)
-
-        if os.path.exists(baseline_path):
-            shutil.rmtree(baseline_path)
-
-        shutil.copytree(tmpdir, baseline_path)
+    command = ["python", script, saved_plan, "int", "4"]
+    subprocess.run(command, check=False)
 
 
 def test_sphere():
@@ -176,7 +151,7 @@ def test_ellipsoid():
     radii = params[3:6]
     vectors = params[6:9]
 
-    S = ellipsoid.S_matrix(*ellipsoid.scale(*radii, s=0.25), *ellipsoid.angles(*vectors))
+    S = ellipsoid.S_matrix(*ellipsoid.scale(*radii), *ellipsoid.angles(*vectors))
 
     s = np.sqrt(np.linalg.det(S))
     sigma = np.sqrt(np.linalg.det(cov))

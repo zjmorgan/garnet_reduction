@@ -48,3 +48,11 @@ ignore = ["D203", # conflict with D211
           "ANN201", "D400", "D401", "D415", # Unnecessary
           "ARG002", "N802", "N803","N806", "D100","D101","D102","D103", "D104","D107","D417" # put it back in the future
           ]
+
+[tool.pytest.ini_options]
+markers = [
+    "resources_intensive: mark test as using a lot of computing resources: CPU, memory, etc.",
+    "mount_sns: mark a test as using /SNS/ data mount",
+    "mount_hfir: mark a test as using /HFIR/ data mount",
+    "datarepo: Tests that require the garnet_data submodule"
+    ]
