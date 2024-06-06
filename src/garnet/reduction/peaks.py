@@ -22,7 +22,7 @@ from mantid.simpleapi import (FindPeaksMD,
                               mtd)
 
 from mantid.kernel import V3D
-from mantid.dataobjects import PeakShapeEllipsoid
+from mantid.dataobjects import PeakShapeEllipsoid, NoShape
 
 from mantid import config
 
@@ -70,7 +70,7 @@ class PeaksModel:
         """
 
         FindPeaksMD(InputWorkspace=md,
-                    PeakDistanceTreshhold=2*np.pi/max_d,
+                    PeakDistanceThreshold=2*np.pi/max_d,
                     MaxPeaks=max_peaks,
                     PeakFindingStrategy='VolumeNormalization',
                     DensityThresholdFactor=density,
@@ -102,7 +102,8 @@ class PeaksModel:
                               peak_radius,
                               background_inner_fact=1,
                               background_outer_fact=1.5,
-                              method='sphere'):
+                              method='sphere',
+                              centroid=True):
         """
         Integrate peaks using spherical or ellipsoidal regions.
         Ellipsoid integration adapts itself to the peak distribution.
@@ -121,11 +122,16 @@ class PeaksModel:
             Factor of peak radius for background shell. The default is 1.5.
         method : str, optional
             Integration method. The default is 'sphere'.
-
+        centroid : str, optional
+            Shift peak position to centroid. The default is True.
+            
         """
 
         background_inner_radius = peak_radius*background_inner_fact
         background_outer_radius = peak_radius*background_outer_fact
+
+        if method == 'sphere' and centroid:
+            self.centroid_peaks(md, peaks, peak_radius)
 
         IntegratePeaksMD(InputWorkspace=md,
                          PeaksWorkspace=peaks,
@@ -303,13 +309,14 @@ class PeaksModel:
                                       max_order=0,
                                       cross_terms=False):
         """
+        Predict the modulated peak positions based on main peaks.
 
         Parameters
         ----------
         ws : str
             Name of workspace to predict peaks with UB.
         peaks : str
-            Name of peaks table.
+            Name of main peaks table.
         centering : str
             Lattice centering that provides the reflection condition.
         d_min : float
@@ -348,6 +355,58 @@ class PeaksModel:
                                OutputWorkspace=peaks)
 
         DeleteWorkspace(Workspace=sat_peaks)
+
+    def predict_satellite_peaks(self, peaks_ws,
+                                      data_ws, 
+                                      lamda_min,
+                                      lamda_max,
+                                      d_min,
+                                      mod_vec_1=[0,0,0],
+                                      mod_vec_2=[0,0,0],
+                                      mod_vec_3=[0,0,0],
+                                      max_order=0,
+                                      cross_terms=False):
+        """
+        Locate satellite peaks from goniometer angles.
+
+        Parameters
+        ----------
+        peaks_ws : str
+            Reference peaks table.
+        data_ws : str
+            Q-sample data with goniometer(s).
+        d_min : float
+            The lower d-spacing resolution to predict peaks.
+        lamda_min : float
+            Minimum wavelength.
+        lamda_max : float
+            Maximum wavelength.
+        mod_vec_1, mod_vec_2, mod_vec_3 : list, optional
+            Modulation vectors. The default is [0,0,0].
+        max_order : int, optional
+            Maximum order greater than zero for satellites. The default is 0.
+        cross_terms : bool, optional
+            Include modulation cross terms. The default is False.
+
+        """
+
+        Rs = self.get_all_goniometer_matrices(data_ws)
+
+        for R in Rs:
+
+            self.set_goniometer(peaks_ws, R)
+
+            self.predict_modulated_peaks(peaks_ws,
+                                         d_min,
+                                         lamda_min,
+                                         lamda_max,
+                                         mod_vec_1,
+                                         mod_vec_2,
+                                         mod_vec_3,
+                                         max_order,
+                                         cross_terms)
+
+            self.remove_duplicate_peaks(peaks_ws)
 
     def sort_peaks_by_hkl(self, peaks):
         """
@@ -421,6 +480,7 @@ class PeaksModel:
             Goniometer matrices.
 
         """
+
         Rs = []
 
         for ei in range(mtd[ws].getNumExperimentInfo()):
@@ -505,6 +565,9 @@ class PeaksModel:
         ConvertPeaksWorkspace(PeakWorkspace=peaks,
                               OutputWorkspace=peaks)
 
+        for i in range(mtd[peaks].getNumberPeaks()):
+            mtd[peaks].getPeak(i).setPeakShape(NoShape())
+
     def combine_peaks(self, peaks, merge):
         """
         Merge two peaks workspaces into one.
@@ -528,6 +591,18 @@ class PeaksModel:
             CombinePeaksWorkspaces(LHSWorkspace=merge,
                                    RHSWorkspace=peaks,
                                    OutputWorkspace=merge)
+
+            merge_run = mtd[merge].run()
+            peaks_run = mtd[peaks].run()
+
+            keys = ['run', 'h', 'k', 'l', 'm', 'n', 'p',
+                    'bkg', 'bkg_err', 'data', 'data_err', 'norm', 'norm_err']
+
+            for key in keys:
+                log = 'peaks_{}'.format(key)
+                peaks_list = np.array(peaks_run.getLogData(log).value).tolist()
+                merge_list = np.array(merge_run.getLogData(log).value).tolist()
+                merge_run[log] = merge_list+peaks_list
 
     def delete_peaks(self, peaks):
         """
@@ -716,6 +791,26 @@ class PeakModel:
         az_phi = np.rad2deg(peak.getAzimuthal())
 
         return two_theta, az_phi
+    
+    def get_goniometer_matrix(self, no):
+        """
+        Goniometer matrix of the peak.
+
+        Parameters
+        ----------
+        no : int
+            Peak index number.
+
+        Returns
+        -------
+        R : 2d-array
+            Rotation matrix.
+
+        """
+        
+        peak = mtd[self.peaks].getPeak(no)
+
+        return peak.getGoniometerMatrix()
 
     def get_goniometer_angles(self, no):
         """
@@ -741,25 +836,41 @@ class PeakModel:
 
         return list(gon.getEulerAngles())
 
-    def set_background(self, no, bkg, bkg_err):
+    def add_diagonstic_info(self, no, values):
         """
-        Add the background level.
+        Log diagnostic info
 
         Parameters
         ----------
         no : int
             Peak index number.
-        bkg : float
-            Background level.
-        bkg_err : float
-            Background error.
+        values : list
+           Diagnostics.
 
         """
 
         peak = mtd[self.peaks].getPeak(no)
 
-        peak.setBinCount(bkg)
-        peak.setAbsorptionWeightedPathLength(bkg_err)
+        run = peak.getRunNumber()
+        h, k, l = [int(val) for val in peak.getIntHKL()]
+        m, n, p = [int(val) for val in peak.getIntMNP()]
+
+        run_info = mtd[self.peaks].run()
+        run_info_keys = run_info.keys()
+
+        keys = ['run', 'h', 'k', 'l', 'm', 'n', 'p',
+                'bkg', 'bkg_err', 'data', 'data_err', 'norm', 'norm_err']
+
+        vals = [run, h, k, l, m, n, p]+values
+
+        for key, val in zip(keys, vals):
+            log = 'peaks_{}'.format(key)
+            if log not in run_info_keys:
+                run_info[log] = [val]
+            else:
+                items = np.array(run_info.getLogData(log).value).tolist()
+                items.append(val)
+                run_info[log] = items
 
     def get_peak_name(self, no):
         """
@@ -780,8 +891,9 @@ class PeakModel:
         peak = mtd[self.peaks].getPeak(no)
 
         run = peak.getRunNumber()
-        hkl = peak.getIntHKL()
-        mnp = peak.getIntMNP()
+        hkl = [int(val) for val in peak.getIntHKL()]
+        mnp = [int(val) for val in peak.getIntMNP()]
+        lamda = peak.getWavelength()
 
         if HasUB(Workspace=self.peaks):
             ol = mtd[self.peaks].sample().getOrientedLattice()
@@ -794,9 +906,9 @@ class PeakModel:
         else:
             d = peak.getDSpacing()
 
-        name = 'peak_d={:.4f}_({:.0f},{:.0f},{:.0f})'+\
-                            '_({:.0f},{:.0f},{:.0f})_run#{}'
-        return name.format(d,*hkl,*mnp,run)
+        name = 'peak_d={:.4f}_({:d},{:d},{:d})'+\
+                            '_({:d},{:d},{:d})_lambda={:.4f}_run#{:d}'
+        return name.format(d,*hkl,*mnp,lamda,run)
 
     def get_peak_shape(self, no, r_cut=np.inf):
         """

@@ -35,10 +35,9 @@ class Pages:
         
         self.pdf = PdfPages(filename)
 
-    def add_plot(self):
+    def add_plot(self, fig):
             
-        self.pdf.savefig()
-        plt.close('all')
+        self.pdf.savefig(fig)
 
     def close(self):
 

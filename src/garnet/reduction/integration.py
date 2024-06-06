@@ -1,26 +1,44 @@
-from garnet.plots.peaks import RadiusPlot, PeakPlot
-from garnet.config.instruments import beamlines
-from garnet.reduction.ub import UBModel, Optimization, lattice_group
-from garnet.reduction.peaks import PeaksModel, PeakModel, centering_reflection
-from garnet.reduction.data import DataModel
-from lmfit import Minimizer, Parameters
+import os
+
+import numpy as np
+
 import scipy.spatial.transform
 import scipy.interpolate
 import scipy.integrate
 import scipy.special
-import numpy as np
-import os
+
+from lmfit import Minimizer, Parameters
+
+# import logging
+# logger = logging.getLogger(__name__)
+# logging.basicConfig(filename='garnet.integration.log', level=logging.INFO)
 
 from mantid.simpleapi import mtd
 from mantid import config
 config['Q.convention'] = 'Crystallography'
 
-class Integration:
+config['MultiThreaded.MaxCores'] == '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['TBB_THREAD_ENABLED'] = '0'
+
+from garnet.plots.peaks import RadiusPlot, PeakPlot
+from garnet.config.instruments import beamlines
+from garnet.reduction.ub import UBModel, Optimization, lattice_group
+from garnet.reduction.peaks import PeaksModel, PeakModel, centering_reflection
+from garnet.reduction.data import DataModel
+from garnet.reduction.plan import SubPlan
+
+class Integration(SubPlan):
 
     def __init__(self, plan):
 
-        self.plan = plan
+        super(Integration, self).__init__(plan)
+
         self.params = plan['Integration']
+        self.output = 'integration'
 
         self.validate_params()
 
@@ -59,6 +77,7 @@ class Integration:
         data = DataModel(beamlines[plan['Instrument']])
 
         instance = Integration(plan)
+        instance.proc = proc
 
         if data.laue:
             return instance.laue_integrate()
@@ -68,7 +87,6 @@ class Integration:
     def laue_integrate(self):
 
         output_file = self.get_output_file()
-        diag_file = self.get_diagnostic_file()
 
         data = DataModel(beamlines[self.plan['Instrument']])
         data.update_raw_path(self.plan)
@@ -79,18 +97,19 @@ class Integration:
 
         runs = self.plan['Runs']
 
-        data.load_generate_normalization(self.plan['VanadiumFile'],
-                                         self.plan['FluxFile'])
+        # grouping_file = self.plan['GroupingFile']
 
-        grouping_file = diag_file.replace('.nxs', '.xml')
-
-        data.preprocess_detectors()
-        data.create_grouping(grouping_file, self.plan.get('Grouping'))
-        mtd.remove('detectors')
+        self.run = 0
+        self.runs = len(runs)
 
         for run in runs:
 
+            self.run += 1
+
             data.load_data('data', self.plan['IPTS'], run)
+
+            data.load_generate_normalization(self.plan['VanadiumFile'],
+                                             self.plan['FluxFile'])
 
             data.apply_calibration('data',
                                    self.plan.get('DetectorCalibration'),
@@ -99,6 +118,8 @@ class Integration:
             data.apply_mask('data', self.plan.get('MaskFile'))
 
             data.crop_for_normalization('data')
+
+            data.preprocess_detectors('data')
 
             data.convert_to_Q_sample('data', 'md_data', lorentz_corr=False)
             data.convert_to_Q_sample('data', 'md_corr', lorentz_corr=True)
@@ -114,10 +135,16 @@ class Integration:
 
             if self.params['MaxOrder'] > 0:
 
-                self.predict_satellite_peaks('peaks',
-                                             'md_corr',
-                                             lamda_min,
-                                             lamda_max)
+                peaks.predict_satellite_peaks('peaks',
+                                              'md_corr',
+                                              self.params['MinD'],
+                                              lamda_min,
+                                              lamda_max,
+                                              self.params['ModVec1'],
+                                              self.params['ModVec2'],
+                                              self.params['ModVec3'],
+                                              self.params['MaxOrder'],
+                                              self.params['CrossTerms'])
 
             self.peaks, self.data = peaks, data
 
@@ -127,19 +154,15 @@ class Integration:
 
             peaks.combine_peaks('peaks', 'combine')
 
-            diag_dir = os.path.dirname(diag_file)
-
-            md_file = os.path.join(diag_dir, 'run#{}_data.nxs'.format(run))
+            md_file = self.get_diagnostic_file('run#{}_data'.format(run))
             data.save_histograms(md_file, 'md_corr', sample_logs=True)
 
-            pk_file = os.path.join(diag_dir, 'run#{}_peaks.nxs'.format(run))
+            pk_file = self.get_diagnostic_file('run#{}_peaks'.format(run))
             peaks.save_peaks(pk_file, 'peaks')
 
         peaks.remove_weak_peaks('combine')
 
         peaks.save_peaks(output_file, 'combine')
-
-        os.remove(grouping_file)
 
         return output_file
 
@@ -180,7 +203,13 @@ class Integration:
 
         lamda_min, lamda_max = data.wavelength_band
 
+        self.run = 0
+        self.runs = len(runs)
+
         if self.plan['Instrument'] == 'WAND²':
+
+            self.runs = 1
+            self.run += 1
 
             data.load_data('data',
                            self.plan['IPTS'],
@@ -206,22 +235,26 @@ class Integration:
                                 lamda_min,
                                 lamda_max)
 
-            peaks.convert_peaks('peaks')
-
             if self.params['MaxOrder'] > 0:
 
-                self.predict_satellite_peaks('peaks',
-                                             'md_data',
-                                             lamda_min,
-                                             lamda_max)
-
-                peaks.remove_duplicate_peaks('peaks')
+                peaks.predict_satellite_peaks('peaks',
+                                              'md_data',
+                                              self.params['MinD'],
+                                              lamda_min,
+                                              lamda_max,
+                                              self.params['ModVec1'],
+                                              self.params['ModVec2'],
+                                              self.params['ModVec3'],
+                                              self.params['MaxOrder'],
+                                              self.params['CrossTerms'])
 
             peaks.combine_peaks('peaks', 'combine')
 
         else:
 
             for run in runs:
+
+                self.run += 1
 
                 data.load_data('data',
                                self.plan['IPTS'],
@@ -256,18 +289,27 @@ class Integration:
                                     lamda_min,
                                     lamda_max)
 
-                peaks.convert_peaks('peaks')
-
                 if self.params['MaxOrder'] > 0:
 
-                    self.predict_satellite_peaks('peaks',
-                                                 'md_data',
-                                                 lamda_min,
-                                                 lamda_max)
-
-                    peaks.remove_duplicate_peaks('peaks')
+                    peaks.predict_satellite_peaks('peaks',
+                                                  'md_data',
+                                                  self.params['MinD'],
+                                                  lamda_min,
+                                                  lamda_max,
+                                                  self.params['ModVec1'],
+                                                  self.params['ModVec2'],
+                                                  self.params['ModVec3'],
+                                                  self.params['MaxOrder'],
+                                                  self.params['CrossTerms'])
 
                 peaks.combine_peaks('peaks', 'combine')
+
+        peaks.convert_peaks('combine')
+
+        peaks.integrate_peaks('md_data',
+                              'combine',
+                              self.params['Radius'],
+                              method='sphere')
 
         peaks.save_peaks(output_file, 'combine')
 
@@ -301,9 +343,10 @@ class Integration:
             data.combine_Q_sample(merge, ws)
 
             if ws == 'md_data':
-                peaks.load_peaks(file, 'peaks')
-                peaks.combine_peaks('peaks', 'combine')
-                os.remove(file)
+                for file in files:
+                    peaks.load_peaks(file, 'peaks')
+                    peaks.combine_peaks('peaks', 'combine')
+                    os.remove(file)
                 md_file = output_file.replace('.nxs', '_{}.nxs'.format(ws))
                 data.save_histograms(md_file, ws, sample_logs=True)
 
@@ -311,8 +354,6 @@ class Integration:
         peaks.save_peaks(pk_file, 'combine')
 
         peaks.renumber_runs_by_index('md_data', 'combine')
-
-        peaks.remove_duplicate_peaks('combine')
 
         self.peaks, self.data = peaks, data
 
@@ -355,8 +396,6 @@ class Integration:
 
         peaks = self.peaks
 
-        plot_path = self.get_plot_path()
-
         peaks_name = peaks.get_peaks_name(peaks_ws)
 
         r_cut = self.params['Radius']
@@ -375,44 +414,9 @@ class Integration:
 
         plot.add_sphere(r_cut, *vals)
 
-        plot.save_plot(os.path.join(plot_path, peaks_name+'.png'))
+        plot.save_plot(self.get_plot_file(peaks_name))
 
         return r_cut
-
-    def predict_satellite_peaks(self, peaks_ws, data_ws, lamda_min, lamda_max):
-        """
-        Locate satellite peaks from goniometer angles.
-
-        Parameters
-        ----------
-        peaks_ws : str
-            Reference peaks table.
-        data_ws : str
-            Q-sample data with goniometer(s).
-        lamda_min : float
-            Minimum wavelength.
-        lamda_max : float
-            Maximum wavelength.
-
-        """
-
-        peaks = self.peaks
-
-        Rs = peaks.get_all_goniometer_matrices(data_ws)
-
-        for R in Rs:
-
-            peaks.set_goniometer(peaks_ws, R)
-
-            peaks.predict_modulated_peaks(peaks_ws,
-                                          self.params['MinD'],
-                                          lamda_min,
-                                          lamda_max,
-                                          self.params['ModVec1'],
-                                          self.params['ModVec2'],
-                                          self.params['ModVec3'],
-                                          self.params['MaxOrder'],
-                                          self.params['CrossTerms'])
 
     def fit_peaks(self, peaks_ws, r_cut, rotation=False):
         """
@@ -431,25 +435,33 @@ class Integration:
 
         data = self.data
 
-        plot_path = self.get_plot_path()
-
         peak = PeakModel(peaks_ws)
 
-        n = peak.get_number_peaks()
+        n_peak = peak.get_number_peaks()
 
-        for i in range(n):
+        plot = PeakPlot()
+
+        bin_size = r_cut/5
+
+        for i in range(n_peak):
+
+            comp = '{:3.0f}%'.format(i/n_peak*100)
+            iters = '({:}/{:})'.format(self.run, self.runs)
+            proc = 'Proc {:2}:'.format(self.proc)
+
+            print(proc+' '+iters+' '+comp)
 
             params = peak.get_peak_shape(i, r_cut)
 
             peak.set_peak_intensity(i, 0, 0)
 
-            j, max_iter = 0, 3
+            j, max_iter = 0, 2
 
             while j < max_iter and params is not None:
 
                 j += 1
 
-                bins, extents = self.bin_extent(*params)
+                bins, extents = self.bin_extent(*params, bin_size=bin_size)
 
                 d, n, Q0, Q1, Q2 = data.normalize_to_Q_sample('md_data',
                                                               extents,
@@ -488,20 +500,29 @@ class Integration:
 
                     int_intens, sig_noise = ellipsoid.intens_fit
 
-                    I = int_intens[-1]
-                    sigma = I/sig_noise[-1] if sig_noise[-1] > 0 else np.inf
+                    *_, binning, _ = fitting
+
+                    R = peak.get_goniometer_matrix(i)
+                    wavelength = peak.get_wavelength(i)
+
+                    norm = self.data.get_norm(*binning[0])
+
+                    I, sigma = ellipsoid.integrate_norm(binning,
+                                                        c,
+                                                        S,
+                                                        R,
+                                                        norm)
 
                     peak.set_peak_intensity(i, I, sigma)
-                    peak.set_background(i, *ellipsoid.bkg)
+                    peak.add_diagonstic_info(i, ellipsoid.info)
 
-                    plot = PeakPlot(fitting)
+                    plot.add_fitting(fitting)
 
                     vals = ellipsoid.interp_fit
                     plot.add_ellipsoid(c, S, W, vals)
 
                     plot.add_peak_intensity(int_intens, sig_noise)
 
-                    wavelength = peak.get_wavelength(i)
                     angles = peak.get_angles(i)
                     goniometer = peak.get_goniometer_angles(i)
 
@@ -509,11 +530,9 @@ class Integration:
 
                     peak_name = peak.get_peak_name(i)
 
-                    peak_file = os.path.join(plot_path, peak_name+'.png')
+                    plot.save_plot(self.get_plot_file(peak_name))
 
-                    plot.save_plot(peak_file)
-
-    def bin_extent(self, *params):
+    def bin_extent(self, *params, bin_size=0.01):
 
         c0, c1, c2, *_ = params
 
@@ -521,11 +540,19 @@ class Integration:
 
         dQ0, dQ1, dQ2 = dQ
 
-        bins = np.array([21, 21, 21])
-
         extents = np.array([[c0-dQ0, c0+dQ0],
                             [c1-dQ1, c1+dQ1],
                             [c2-dQ2, c2+dQ2]])
+
+
+        bin_sizes = np.array([bin_size, bin_size, bin_size])
+
+        min_adjusted = np.floor(extents[:, 0]/bin_sizes)*bin_sizes
+        max_adjusted = np.ceil(extents[:, 1]/bin_sizes)*bin_sizes
+
+        bins = ((max_adjusted-min_adjusted)/bin_sizes).astype(int)
+
+        extents = np.vstack((min_adjusted, max_adjusted)).T
 
         return bins, extents
 
@@ -573,52 +600,6 @@ class Integration:
             return instance.laue_combine(files)
         else:
             return instance.monochromatic_combine(files)
-
-    def get_output_file(self):
-        """
-        Name of output file.
-
-        Returns
-        -------
-        output_file : str
-            Integration output file.
-
-        """
-
-        output_file = os.path.join(self.plan['OutputPath'],
-                                   'integration',
-                                   self.plan['OutputName']+'.nxs')
-
-        return output_file
-
-    def get_plot_path(self):
-        """
-        Plot directory.
-
-        Returns
-        -------
-        plot_path : str
-            Path name to save plots.
-
-        """
-
-        return os.path.join(self.plan['OutputPath'], 'integration', 'plots')
-
-    def get_diagnostic_file(self):
-        """
-        Diagnostic directory.
-
-        Returns
-        -------
-        diag_path : str
-            Path name to save diagnostics.
-
-        """
-
-        return os.path.join(self.plan['OutputPath'],
-                            'integration/diagnostics',
-                            self.plan['OutputName']+'.nxs')
-
 
 class PeakSphere:
 
@@ -845,12 +826,6 @@ class PeakEllipsoid:
         args = x, A, B, mu, sigma, integrate
 
         y_fit = self.profile(*args)
-        # yp_fit = self.profile_grad(*args)
-
-        # if integrate:
-        #     w = 1/e
-        # else:
-        #     w = 1/np.sqrt(e**2+(dx*yp_fit)**2)
 
         w = 1/e
 
@@ -870,12 +845,6 @@ class PeakEllipsoid:
         args = xu, xv, A, B, mu_u, mu_v, sigma_u, sigma_v, rho, integrate
 
         y_fit = self.projection(*args)
-        # ypu_fit, ypv_fit = self.projection_grad(*args)
-
-        # if integrate:
-        #     w = 1/e
-        # else:
-        #     w = 1/np.sqrt(e**2+(dxu*ypu_fit)**2+(dxv*ypv_fit)**2)
 
         w = 1/e
 
@@ -893,14 +862,6 @@ class PeakEllipsoid:
         args = x0, x1, x2, A, B, c, S, integrate
 
         y_fit = self.func(*args)
-        # yp0_fit, yp1_fit, yp2_fit = self.func_grad(*args)
-
-        # if integrate:
-        #     w = 1/e
-        # else:
-        #     w = 1/np.sqrt(e**2+(dx0*yp0_fit)**2\
-        #                       +(dx1*yp1_fit)**2\
-        #                       +(dx2*yp2_fit)**2)
 
         w = 1/e
 
@@ -1456,6 +1417,61 @@ class PeakEllipsoid:
         self.bkg = bkg, bkg_err
 
         return intens, sig, bkg, c, S
+
+    def integrate_norm(self, bins, c, S, R, n):
+
+        (x0, x1, x2), dx, y, e = bins
+
+        x = np.array([x0-c[0], x1-c[1], x2-c[2]])
+
+        pk = np.einsum('ij,jklm,iklm->klm', np.linalg.inv(S), x, x) < 1
+
+        struct = scipy.ndimage.generate_binary_structure(3, 1)
+        dilate = scipy.ndimage.binary_dilation(pk, struct, border_value=0)
+
+        d = (y/e)**2
+
+        bkg = (dilate ^ pk) & (d > 0)
+        pk = pk & (d > 0)
+
+        y = d/n
+        e = np.sqrt(d)/n
+
+        y_bkg = y[bkg]
+        e_bkg = e[bkg]
+
+        w_bkg = 1/e_bkg**2
+
+        if len(w_bkg) > 2:
+            b = self.weighted_median(y_bkg, w_bkg)
+            b_err = self.jackknife_uncertainty(y_bkg, w_bkg)
+        else:
+            b = b_err = 0.0
+
+        self.info = [b, b_err]
+
+        d3x = np.prod(dx)
+
+        freq = y[pk]-b
+        var = e[pk]**2+b_err**2
+
+        intens = np.nansum(freq)*d3x
+        sig = np.sqrt(np.nansum(var))*d3x
+
+        mask = d[pk] > 0
+        wgt = d[pk][mask]
+
+        sum_d = np.nansum(d[pk])
+        err_d = np.sqrt(np.nansum(d[pk]))
+
+        ave_n = np.average(n[pk][mask], weights=wgt)
+        sig_n = np.sqrt(np.average((n[pk][mask]-ave_n)**2, weights=wgt))
+
+        info = [sum_d, err_d, ave_n, sig_n]
+
+        self.info += info
+
+        return intens, sig
 
     def envelope(self, x0, x1, x2, c0, c1, c2, r0, r1, r2, v0, v1, v2):
 

@@ -54,17 +54,13 @@ class RadiusPlot(BasePlot):
 
 class PeakPlot(BasePlot):
 
-    def __init__(self, fitting):
+    def __init__(self):
 
         super(PeakPlot, self).__init__()
-
-        xye_1d, y_1d_fit, xye_2d, y_2d_fit, xye_3d, y_3d_fit = fitting
 
         plt.close('all')
 
         self.fig = plt.figure(figsize=(14.4, 4.8), layout='constrained')
-
-        _, (r0, r1, r2), _, _ = xye_3d
 
         sp = GridSpec(1, 3, figure=self.fig, width_ratios=[1,0.75,1.25])
 
@@ -83,10 +79,299 @@ class PeakPlot(BasePlot):
         gs = GridSpecFromSubplotSpec(2,
                                      3,
                                      height_ratios=[1,1],
-                                     width_ratios=[r0,r0,r1],
+                                     width_ratios=[1,1,1],
                                      subplot_spec=sp[2])
 
         self.gs.append(gs)
+
+        # gs = GridSpecFromSubplotSpec(2,
+        #                              1,
+        #                              subplot_spec=sp[3])
+
+        # self.gs.append(gs)
+
+        self.__init_ellipsoid()
+        self.__init_projection()
+        self.__init_profile()
+        # self.__init_norm()
+
+    def __init_ellipsoid(self):
+
+        self.ellip = []
+        self.ellip_im = []
+        self.ellip_el = []
+        self.ellip_pt = []
+
+        x = np.arange(5)
+        y = np.arange(6)
+        z = y+y.size*x[:,np.newaxis]
+
+        gs = self.gs[2]
+
+        ax = self.fig.add_subplot(gs[0,0])
+
+        self.ellip.append(ax)
+
+        im = ax.imshow(z.T, extent=(0, 5, 0, 6), origin='lower')
+
+        self.ellip_im.append(im)
+
+        ax.minorticks_on()
+        ax.set_aspect(1)
+        ax.xaxis.set_ticklabels([])
+        ax.set_ylabel(r'$Q_y$ [$\AA^{-1}$]')
+
+        el = self._draw_ellipse(ax, 2.5, 3, 1, 1, 0)
+        self.ellip_el.append(el)
+
+        line = self._draw_intersecting_line(ax, 2.5, 3)
+        self.ellip_pt.append(line)
+
+        ax = self.fig.add_subplot(gs[1,0])
+
+        self.ellip.append(ax)
+
+        im = ax.imshow(z.T, extent=(0, 5, 0, 6), origin='lower')
+
+        self.ellip_im.append(im)
+
+        ax.minorticks_on()
+        ax.set_aspect(1)
+        ax.set_xlabel(r'$Q_x$ [$\AA^{-1}$]')
+        ax.set_ylabel(r'$Q_y$ [$\AA^{-1}$]')
+
+        el = self._draw_ellipse(ax, 2.5, 3, 1, 1, 0)
+        self.ellip_el.append(el)
+
+        line = self._draw_intersecting_line(ax, 2.5, 3)
+        self.ellip_pt.append(line)
+
+        ax = self.fig.add_subplot(gs[0,1])
+
+        self.ellip.append(ax)
+
+        im = ax.imshow(z.T, extent=(0, 5, 0, 6), origin='lower')
+
+        self.ellip_im.append(im)
+
+        ax.minorticks_on()
+        ax.set_aspect(1)
+        ax.xaxis.set_ticklabels([])
+        ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
+
+        el = self._draw_ellipse(ax, 2.5, 3, 1, 1, 0)
+        self.ellip_el.append(el)
+
+        line = self._draw_intersecting_line(ax, 2.5, 3)
+        self.ellip_pt.append(line)
+
+        ax = self.fig.add_subplot(gs[1,1])
+
+        self.ellip.append(ax)
+
+        im = ax.imshow(z.T, extent=(0, 5, 0, 6), origin='lower')
+
+        self.ellip_im.append(im)
+
+        ax.minorticks_on()
+        ax.set_aspect(1)
+        ax.set_xlabel(r'$Q_x$ [$\AA^{-1}$]')
+        ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
+
+        el = self._draw_ellipse(ax, 2.5, 3, 1, 1, 0)
+        self.ellip_el.append(el)
+
+        line = self._draw_intersecting_line(ax, 2.5, 3)
+        self.ellip_pt.append(line)
+
+        ax = self.fig.add_subplot(gs[0,2])
+
+        self.ellip.append(ax)
+
+        im = ax.imshow(z.T, extent=(0, 5, 0, 6), origin='lower')
+
+        self.ellip_im.append(im)
+        ax.minorticks_on()
+        ax.set_aspect(1)
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+        # ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
+
+        el = self._draw_ellipse(ax, 2.5, 3, 1, 1, 0)
+        self.ellip_el.append(el)
+
+        line = self._draw_intersecting_line(ax, 2.5, 3)
+        self.ellip_pt.append(line)
+
+        ax = self.fig.add_subplot(gs[1,2])
+
+        self.ellip.append(ax)
+
+        im = ax.imshow(z.T, extent=(0, 5, 0, 6), origin='lower')
+
+        self.ellip_im.append(im)
+
+        ax.minorticks_on()
+        ax.set_aspect(1)
+        ax.set_xlabel(r'$Q_y$ [$\AA^{-1}$]')
+        ax.yaxis.set_ticklabels([])
+        # ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
+
+        el = self._draw_ellipse(ax, 2.5, 3, 1, 1, 0)
+        self.ellip_el.append(el)
+
+        line = self._draw_intersecting_line(ax, 2.5, 3)
+        self.ellip_pt.append(line)
+
+        norm = Normalize(0, 29)
+        im = ScalarMappable(norm=norm)
+        self.cb_el = self.fig.colorbar(im, ax=[self.ellip[-2], self.ellip[-1]])
+        self.cb_el.ax.minorticks_on()
+        self.cb_el.formatter.set_powerlimits((0, 0))
+        self.cb_el.formatter.set_useMathText(True)
+
+    def __init_projection(self):
+
+        gs = self.gs[1]
+
+        self.proj = []
+        self.proj_im = []
+        self.proj_el = []
+
+        x = np.arange(5)
+        y = np.arange(6)
+        z = y+y.size*x[:,np.newaxis]
+
+        ax = self.fig.add_subplot(gs[0,0])
+
+        self.proj.append(ax)
+
+        im = ax.imshow(z.T, extent=(0, 5, 0, 6), origin='lower')
+
+        self.proj_im.append(im)
+
+        ax.minorticks_on()
+        ax.set_aspect(1)
+        ax.set_ylabel(r'$\Delta{Q}_2$ [$\AA^{-1}$]')
+        ax.xaxis.set_ticklabels([])
+
+        el = self._draw_ellipse(ax, 2.5, 3, 1, 1, 0)
+        self.proj_el.append(el)
+
+        ax = self.fig.add_subplot(gs[1,0])
+
+        self.proj.append(ax)
+
+        im = ax.imshow(z.T, extent=(0, 5, 0, 6), origin='lower')
+
+        self.proj_im.append(im)
+
+        ax.minorticks_on()
+        ax.set_aspect(1)
+        ax.set_xlabel(r'$\Delta{Q}_1$ [$\AA^{-1}$]')
+        ax.set_ylabel(r'$\Delta{Q}_2$ [$\AA^{-1}$]')
+
+        el = self._draw_ellipse(ax, 2.5, 3, 1, 1, 0)
+        self.proj_el.append(el)
+
+        norm = Normalize(0, 29)
+        im = ScalarMappable(norm=norm)
+        self.cb_proj = self.fig.colorbar(im, ax=self.proj)
+        self.cb_proj.ax.minorticks_on()
+        self.cb_proj.formatter.set_powerlimits((0, 0))
+        self.cb_proj.formatter.set_useMathText(True)
+
+    def __init_profile(self):
+
+        gs = self.gs[0]
+
+        ax = self.fig.add_subplot(gs[0,0])
+
+        x = np.linspace(0, 10)
+        y = np.ones_like(x)
+        e = np.zeros_like(x)
+
+        y_fit = np.ones_like(x)
+
+        self.eb = ax.errorbar(x, y, e, fmt='o')
+        self.prof_dat, = ax.step(x, y, where='mid', color='C0')
+        self.prof_fit, = ax.step(x, y_fit, where='mid', color='C1')
+        ax.minorticks_on()
+        ax.set_xlabel(r'$|Q|$ [$\AA^{-1}$]')
+        ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+        ax.yaxis.major.formatter._useMathText = True
+
+        self.lower = ax.axvline(x=3, color='k', linestyle='--')
+        self.upper = ax.axvline(x=7, color='k', linestyle='--')
+
+        self.prof = ax
+
+    def __init_norm(self):
+
+        gs = self.gs[3]
+
+        self.roi = []
+
+        x = np.linspace(0.1, 10)
+        y = np.ones_like(x)
+        e = np.zeros_like(x)
+
+        ax = self.fig.add_subplot(gs[0])
+        ax.minorticks_on()
+        ax.xaxis.set_ticklabels([])
+        ax.set_ylabel(r'Counts')
+        ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+        ax.yaxis.major.formatter._useMathText = True
+
+        self.roi.append(ax)
+
+        self.data_eb = ax.errorbar(x, y, e, fmt='o', color='C0')
+
+        label = r'$k$ [$\AA^{-1}$]'
+
+        ax = self.fig.add_subplot(gs[1])
+        ax.minorticks_on()
+        ax.set_xlabel(label)
+        ax.set_ylabel(r'Vanadium')
+        ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+        ax.yaxis.major.formatter._useMathText = True
+
+        self.roi.append(ax)
+
+        self.norm_dat, = ax.step(x, y, where='mid', color='C0')
+
+    def add_norm(self, integral):
+
+        delta, d, n = integral
+
+        line, caps, bars = self.data_eb
+
+        barsy, = bars
+
+        x, y, e = delta, d, np.sqrt(d)
+
+        line.set_data(x, y)
+
+        barsy.set_segments([np.array([[x, yt],
+                                      [x, yb]]) for x, yt, yb in zip(x,
+                                                                     y-e,
+                                                                     y+e)])
+                                                                     
+        self.roi[0].relim()
+        self.roi[0].autoscale_view()
+
+        y = n
+
+        self.norm_dat.set_data(x, y)
+
+        self.roi[1].relim()
+        self.roi[1].autoscale_view()
+
+    def add_fitting(self, fitting):
+
+        xye_1d, y_1d_fit, xye_2d, y_2d_fit, xye_3d, y_3d_fit = fitting
+
+        #_, (r0, r1, r2), _, _ = xye_3d
 
         self.add_profile_fit(xye_1d, y_1d_fit)
         self.add_projection_fit(xye_2d, y_2d_fit)
@@ -146,126 +431,48 @@ class PeakPlot(BasePlot):
         y1_fit = np.nansum(y_fit, axis=1)
         y2_fit = np.nansum(y_fit, axis=2)
 
-        self.ellip = []
+        d0 = 0.5*(x0[1,0,0]-x0[0,0,0])
+        d1 = 0.5*(x1[0,1,0]-x1[0,0,0])
+        d2 = 0.5*(x2[0,0,1]-x2[0,0,0])
 
-        gs = self.gs[2]
-
-        ax = self.fig.add_subplot(gs[0,0])
-
-        self.ellip.append(ax)
+        x0_min, x0_max = x0[0,0,0]-d0, x0[-1,0,0]+d0
+        x1_min, x1_max = x1[0,0,0]-d1, x1[0,-1,0]+d1
+        x2_min, x2_max = x2[0,0,0]-d2, x2[0,0,-1]+d2
 
         vmin, vmax = self._color_limits(y2, y2_fit)
 
-        ax.pcolormesh(x0[:,0,0],
-                      x1[0,:,0],
-                      y2.T,
-                      vmin=vmin,
-                      vmax=vmax,
-                      rasterized=True,
-                      shading='nearest')
+        self.ellip_im[0].set_data(y2.T)
+        self.ellip_im[0].set_extent((x0_min, x0_max, x1_min, x1_max))
+        self.ellip_im[0].set_clim(vmin, vmax)
 
-        ax.minorticks_on()
-        ax.set_aspect(1)
-        ax.xaxis.set_ticklabels([])
-        ax.set_ylabel(r'$Q_y$ [$\AA^{-1}$]')
-
-        ax = self.fig.add_subplot(gs[1,0])
-
-        self.ellip.append(ax)
-
-        ax.pcolormesh(x0[:,0,0],
-                      x1[0,:,0],
-                      y2_fit.T,
-                      vmin=vmin,
-                      vmax=vmax,
-                      rasterized=True,
-                      shading='nearest')
-
-        ax.minorticks_on()
-        ax.set_aspect(1)
-        ax.set_xlabel(r'$Q_x$ [$\AA^{-1}$]')
-        ax.set_ylabel(r'$Q_y$ [$\AA^{-1}$]')
-
-        ax = self.fig.add_subplot(gs[0,1])
-
-        self.ellip.append(ax)
+        self.ellip_im[1].set_data(y2_fit.T)
+        self.ellip_im[1].set_extent((x0_min, x0_max, x1_min, x1_max))
+        self.ellip_im[1].set_clim(vmin, vmax)
 
         vmin, vmax = self._color_limits(y1, y1_fit)
 
-        ax.pcolormesh(x0[:,0,0],
-                      x2[0,0,:],
-                      y1.T,
-                      vmin=vmin,
-                      vmax=vmax,
-                      rasterized=True,
-                      shading='nearest')
+        self.ellip_im[2].set_data(y1.T)
+        self.ellip_im[2].set_extent((x0_min, x0_max, x2_min, x2_max))
+        self.ellip_im[2].set_clim(vmin, vmax)
 
-        ax.minorticks_on()
-        ax.set_aspect(1)
-        ax.xaxis.set_ticklabels([])
-        ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
-
-        ax = self.fig.add_subplot(gs[1,1])
-
-        self.ellip.append(ax)
-
-        ax.pcolormesh(x0[:,0,0],
-                      x2[0,0,:],
-                      y1_fit.T,
-                      vmin=vmin,
-                      vmax=vmax,
-                      rasterized=True,
-                      shading='nearest')
-
-        ax.minorticks_on()
-        ax.set_aspect(1)
-        ax.set_xlabel(r'$Q_x$ [$\AA^{-1}$]')
-        ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
-
-        ax = self.fig.add_subplot(gs[0,2])
-
-        self.ellip.append(ax)
+        self.ellip_im[3].set_data(y1_fit.T)
+        self.ellip_im[3].set_extent((x0_min, x0_max, x2_min, x2_max))
+        self.ellip_im[3].set_clim(vmin, vmax)
 
         vmin, vmax = self._color_limits(y0, y0_fit)
 
-        ax.pcolormesh(x1[0,:,0],
-                      x2[0,0,:],
-                      y0.T,
-                      vmin=vmin,
-                      vmax=vmax,
-                      rasterized=True,
-                      shading='nearest')
+        self.ellip_im[4].set_data(y0.T)
+        self.ellip_im[4].set_extent((x1_min, x1_max, x2_min, x2_max))
+        self.ellip_im[4].set_clim(vmin, vmax)
 
-        ax.minorticks_on()
-        ax.set_aspect(1)
-        ax.xaxis.set_ticklabels([])
-        ax.yaxis.set_ticklabels([])
-        # ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
+        self.ellip_im[5].set_data(y0_fit.T)
+        self.ellip_im[5].set_extent((x1_min, x1_max, x2_min, x2_max))
+        self.ellip_im[5].set_clim(vmin, vmax)
 
-        ax = self.fig.add_subplot(gs[1,2])
-
-        self.ellip.append(ax)
-
-        ax.pcolormesh(x1[0,:,0],
-                      x2[0,0,:],
-                      y0_fit.T,
-                      vmin=vmin,
-                      vmax=vmax,
-                      rasterized=True,
-                      shading='nearest')
-
-        ax.minorticks_on()
-        ax.set_aspect(1)
-        ax.set_xlabel(r'$Q_y$ [$\AA^{-1}$]')
-        ax.yaxis.set_ticklabels([])
-        # ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]')
-
-        norm = Normalize(vmin, vmax)
-        im = ScalarMappable(norm=norm)
-        cb = self.fig.colorbar(im, ax=[self.ellip[-2], self.ellip[-1]])
-        cb.ax.minorticks_on()
-
-        self.gs = gs
+        self.cb_el.update_normal(self.ellip_im[5])
+        self.cb_el.ax.minorticks_on()
+        self.cb_el.formatter.set_powerlimits((0, 0))
+        self.cb_el.formatter.set_useMathText(True)
 
     def add_projection_fit(self, xye, y_fit):
         """
@@ -287,48 +494,24 @@ class PeakPlot(BasePlot):
 
         vmin, vmax = self._color_limits(y, y_fit)
 
-        gs = self.gs[1]
+        du = 0.5*(xu[1,0]-xu[0,0])
+        dv = 0.5*(xv[0,1]-xv[0,0])
 
-        self.proj = []
+        xu_min, xu_max = xu[0,0]-du, xu[-1,0]+du
+        xv_min, xv_max = xv[0,0]-dv, xv[0,-1]+dv
 
-        ax = self.fig.add_subplot(gs[0,0])
+        self.proj_im[0].set_data(y.T)
+        self.proj_im[0].set_extent((xu_min, xu_max, xv_min, xv_max))
+        self.proj_im[0].set_clim(vmin, vmax)
 
-        self.proj.append(ax)
+        self.proj_im[1].set_data(y_fit.T)
+        self.proj_im[1].set_extent((xu_min, xu_max, xv_min, xv_max))
+        self.proj_im[1].set_clim(vmin, vmax)
 
-        ax.pcolormesh(xu[:,0],
-                      xv[0,:],
-                      y.T,
-                      vmin=vmin,
-                      vmax=vmax,
-                      rasterized=True,
-                      shading='nearest')
-
-        ax.minorticks_on()
-        ax.set_aspect(1)
-        ax.set_ylabel(r'$\Delta{Q}_2$ [$\AA^{-1}$]')
-        ax.xaxis.set_ticklabels([])
-
-        ax = self.fig.add_subplot(gs[1,0])
-
-        self.proj.append(ax)
-
-        ax.pcolormesh(xu[:,0],
-                      xv[0,:],
-                      y_fit.T,
-                      vmin=vmin,
-                      vmax=vmax,
-                      rasterized=True,
-                      shading='nearest')
-
-        ax.minorticks_on()
-        ax.set_aspect(1)
-        ax.set_xlabel(r'$\Delta{Q}_1$ [$\AA^{-1}$]')
-        ax.set_ylabel(r'$\Delta{Q}_2$ [$\AA^{-1}$]')
-
-        norm = Normalize(vmin, vmax)
-        im = ScalarMappable(norm=norm)
-        cb = self.fig.colorbar(im, ax=self.proj)
-        cb.ax.minorticks_on()
+        self.cb_proj.update_normal(self.proj_im[1])
+        self.cb_proj.ax.minorticks_on()
+        self.cb_proj.formatter.set_powerlimits((0, 0))
+        self.cb_proj.formatter.set_useMathText(True)
 
     def add_profile_fit(self, xye, y_fit):
         """
@@ -345,17 +528,19 @@ class PeakPlot(BasePlot):
 
         x, dx, y, e = xye
 
-        gs = self.gs[0]
+        line, caps, bars = self.eb
 
-        ax = self.fig.add_subplot(gs[0,0])
+        barsy, = bars
 
-        self.prof = ax
+        line.set_data(x, y)
 
-        ax.errorbar(x, y, e, fmt='o')
-        ax.step(x, y, where='mid', color='C0')
-        ax.step(x, y_fit, where='mid', color='C1')
-        ax.minorticks_on()
-        ax.set_xlabel(r'$|Q|$ [$\AA^{-1}$]')
+        barsy.set_segments([np.array([[x, yt],
+                                      [x, yb]]) for x, yt, yb in zip(x,
+                                                                     y-e,
+                                                                     y+e)])
+
+        self.prof_dat.set_data(x, y)
+        self.prof_fit.set_data(x, y_fit)
 
     def add_ellipsoid(self, c, S, W, vals):
         """
@@ -382,23 +567,44 @@ class PeakPlot(BasePlot):
 
         mu, mu_u, mu_v, rad, ru, rv, corr, *_ = vals
 
-        self.prof.axvline(x=mu-rad, color='k', linestyle='--')
-        self.prof.axvline(x=mu+rad, color='k', linestyle='--')
+        self.lower.set_xdata([mu-rad, mu-rad])
+        self.upper.set_xdata([mu+rad, mu+rad])
 
-        for ax in self.proj:
-            self._draw_ellipse(ax, mu_u, mu_v, ru, rv, corr)
+        self.prof.relim()
+        self.prof.autoscale_view()
 
-        for ax in self.ellip[0:2]:
-            self._draw_ellipse(ax, c[0], c[1], r[0], r[1], rho[2])
-            self._draw_intersecting_line(ax, c[0], c[1])
+        for el, ax in zip(self.proj_el,self.proj):
+             self._update_ellipse(el, ax, mu_u, mu_v, ru, rv, corr)
 
-        for ax in self.ellip[2:4]:
-            self._draw_ellipse(ax, c[0], c[2], r[0], r[2], rho[1])
-            self._draw_intersecting_line(ax, c[0], c[2])
+        for el, pt, ax in zip(self.ellip_el[0:2],
+                              self.ellip_pt[0:2],
+                              self.ellip[0:2]):
+            self._update_ellipse(el, ax, c[0], c[1], r[0], r[1], rho[2])
+            self._update_intersecting_line(pt, ax, c[0], c[1])
 
-        for ax in self.ellip[4:6]:
-            self._draw_ellipse(ax, c[1], c[2], r[1], r[2], rho[0])
-            self._draw_intersecting_line(ax, c[1], c[2])
+        for el, pt, ax in zip(self.ellip_el[2:4],
+                              self.ellip_pt[2:4],
+                              self.ellip[2:4]):
+            self._update_ellipse(el, ax, c[0], c[2], r[0], r[2], rho[1])
+            self._update_intersecting_line(pt, ax, c[0], c[2])
+
+        for el, pt, ax in zip(self.ellip_el[4:6],
+                              self.ellip_pt[4:6],
+                              self.ellip[4:6]):
+            self._update_ellipse(el, ax, c[1], c[2], r[1], r[2], rho[0])
+            self._update_intersecting_line(pt, ax, c[1], c[2])
+
+    def _update_ellipse(self, ellipse, ax, cx, cy, rx, ry, rho):
+
+        ellipse.set_center((0, 0))
+
+        ellipse.width = 2*np.sqrt(1+rho)
+        ellipse.height = 2*np.sqrt(1-rho)
+
+        trans = Affine2D()
+        trans.rotate_deg(45).scale(rx, ry).translate(cx, cy)
+
+        ellipse.set_transform(trans+ax.transData)
 
     def _draw_ellipse(self, ax, cx, cy, rx, ry, rho):
         """
@@ -426,37 +632,26 @@ class PeakPlot(BasePlot):
                        rasterized=False,
                        zorder=100)
 
-        trans = Affine2D()
-        trans.rotate_deg(45).scale(rx, ry).translate(cx, cy)
+        self._update_ellipse(peak, ax, cx, cy, rx, ry, rho)
 
-        peak.set_transform(trans+ax.transData)
         ax.add_patch(peak)
 
-    def _draw_intersecting_line(self, ax, x0, y0):
-        """
-        Draw line toward origin.
+        return peak
 
-        Parameters
-        ----------
-        ax : axis
-            Plot axis.
-        x0, y0 : float
-            Center.
-
-        """
+    def _update_intersecting_line(self, line, ax, x0, y0):
 
         x_min, x_max = ax.get_xlim()
         y_min, y_max = ax.get_ylim()
 
         if x0 != 0:
-            slope = y0 / x0
+            slope = y0/x0
         else:
             slope = np.inf
 
-        y_at_x_min = slope * (x_min - x0) + y0 if slope != np.inf else y_min
-        y_at_x_max = slope * (x_max - x0) + y0 if slope != np.inf else y_max
-        x_at_y_min = (y_min - y0) / slope + x0 if slope != 0 else x_min
-        x_at_y_max = (y_max - y0) / slope + x0 if slope != 0 else x_max
+        y_at_x_min = slope*(x_min-x0)+y0 if slope != np.inf else y_min
+        y_at_x_max = slope*(x_max-x0)+y0 if slope != np.inf else y_max
+        x_at_y_min = (y_min-y0)/slope+x0 if slope != 0 else x_min
+        x_at_y_max = (y_max-y0)/slope+x0 if slope != 0 else x_max
 
         points = []
         if y_min <= y_at_x_min <= y_max:
@@ -473,7 +668,26 @@ class PeakPlot(BasePlot):
 
         (x1, y1), (x2, y2) = points
 
-        ax.plot([x1, x2], [y1, y2], color='k', linestyle='--')
+        line.set_data([x1, x2], [y1, y2])
+
+    def _draw_intersecting_line(self, ax, x0, y0):
+        """
+        Draw line toward origin.
+
+        Parameters
+        ----------
+        ax : axis
+            Plot axis.
+        x0, y0 : float
+            Center.
+
+        """
+
+        line, = ax.plot([], [], color='k', linestyle='--')
+
+        self._update_intersecting_line(line, ax, x0, y0)
+
+        return line
 
     def _sci_notation(self, x):
         """

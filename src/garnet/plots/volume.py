@@ -20,30 +20,22 @@ class SlicePlot(BasePlot):
         Bp = np.dot(B, W)
 
         Q, R = scipy.linalg.qr(Bp)
-        
+
         self.V = np.dot(R.T, R)
 
-    def calculate_transforms(self, signal, axes, labels, normal, value):
+    def calculate_transforms(self, axes, labels, normal):
 
         ind = np.array(normal) != 1
 
         axes_ind = np.arange(3)[ind]
         slice_ind = np.arange(3)[~ind][0]
 
-        coords = [axes[i] for i in axes_ind]
-        titles = [labels[i] for i in axes_ind]
+        x, y = [axes[i] for i in axes_ind]
+        xlabel, ylabel = [labels[i] for i in axes_ind]
 
-        z = axes[slice_ind]
-        i = np.argmin(np.abs(z-value))
-
-        titles.append('{} = {:.4f}'.format(labels[slice_ind], z[i]))
-
-        if slice_ind == 0:
-            data = signal[i,:,:].T
-        elif slice_ind == 1:
-            data = signal[:,i,:].T
-        else:
-            data = signal[:,:,i].T
+        self.z = axes[slice_ind]
+        self.z_label = labels[slice_ind]
+        self.slice_ind = slice_ind
 
         v = scipy.linalg.cholesky(self.V[ind][:,ind], lower=False)
         v /= v[0,0]
@@ -51,36 +43,63 @@ class SlicePlot(BasePlot):
         T = np.eye(3)
         T[:2,:2] = v
 
-        s = np.diag(T).copy()
+        _, aspect, _ = np.diag(T).copy()
         T[1,1] = 1
-        T[0,2] = -T[0,1]*coords[1].min()
-
-        return coords, data, titles, T, s[1]
-
-    def make_slice(self, coords, data, titles, T, aspect):
-
-        x, y = coords
+        T[0,2] = -T[0,1]*y.min()
 
         transform = Affine2D(T)+self.ax.transData
 
-        norm = 'log' if (data[np.isfinite(data)] > 0).sum() > 2 else 'linear'
-
-        im = self.ax.pcolormesh(x,
-                                y,
-                                data,
-                                norm=norm,
-                                shading='nearest',
-                                transform=transform,
-                                rasterized=True)
+        self.im = self.ax.pcolormesh(x,
+                                     y,
+                                     x+y[:,np.newaxis]+1,
+                                     norm='log',
+                                     shading='nearest',
+                                     transform=transform,
+                                     rasterized=True)
 
         self.ax.set_aspect(aspect)
-        self.ax.set_xlabel(titles[0])
-        self.ax.set_ylabel(titles[1])
-        self.ax.set_title(titles[2])
+        self.ax.set_xlabel(xlabel)
+        self.ax.set_ylabel(ylabel)
         self.ax.minorticks_on()
 
         self.ax.xaxis.get_major_locator().set_params(integer=True)
         self.ax.yaxis.get_major_locator().set_params(integer=True)
 
-        cb = self.fig.colorbar(im, ax=self.ax)
-        cb.minorticks_on()
+        self.cb = self.fig.colorbar(self.im, ax=self.ax)
+        self.cb.minorticks_on()
+        # self.cb.formatter.set_powerlimits((0, 0))
+        # self.cb.formatter.set_useMathText(True)
+
+    def make_slice(self, signal, value):
+
+        i = np.argmin(np.abs(self.z-value))
+
+        if self.slice_ind == 0:
+            data = signal[i,:,:].T
+        elif self.slice_ind == 1:
+            data = signal[:,i,:].T
+        else:
+            data = signal[:,:,i].T
+
+        self.ax.set_title(self.z_label+'$={:.3f}$'.format(self.z[i]))
+
+        data[data <= 0] = np.nan
+        data[~np.isfinite(data)] = np.nan
+
+        vmin, vmax = np.nanmin(data), np.nanmax(data)
+
+        if np.isclose(vmin, vmax):
+            if np.isclose(vmax, 0):
+                vmin, vmax = 0.01, 1.0
+            else:
+                vmin = vmax/100
+        elif np.isnan(vmin) or np.isnan(vmax):
+            vmin, vmax = 0.01, 1.0
+
+        self.im.set_array(data.ravel())
+        self.im.set_clim(vmin=vmin, vmax=vmax)
+
+        self.cb.update_normal(self.im)
+        self.cb.ax.minorticks_on()
+        # self.cb.formatter.set_powerlimits((0, 0))
+        # self.cb.formatter.set_useMathText(True)

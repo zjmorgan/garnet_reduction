@@ -1,6 +1,5 @@
 import sys
 import os
-import concurrent.futures
 
 directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(directory)
@@ -8,6 +7,7 @@ sys.path.append(directory)
 directory = os.path.abspath(os.path.join(directory, '..'))
 sys.path.append(directory)
 
+from mantid.simpleapi import mtd
 from mantid import config
 
 config['Q.convention'] = 'Crystallography'
@@ -16,6 +16,8 @@ from garnet.reduction.plan import ReductionPlan
 from garnet.reduction.parallel import ParallelTasks
 from garnet.reduction.integration import Integration
 from garnet.reduction.normalization import Normalization
+from garnet.reduction.data import DataModel
+from garnet.config.instruments import beamlines
 
 inst_dict = {'corelli': 'CORELLI', 
              'bl9': 'CORELLI',
@@ -29,13 +31,6 @@ inst_dict = {'corelli': 'CORELLI',
              'hb3a': 'DEMAND',
              'wand2': 'WAND²',
              'hb2c': 'WAND²'}
-
-def delete_directory(path):
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        for root, dirs, files in os.walk(path, topdown=False):
-            executor.map(os.remove,
-                         [os.path.join(root, name) for name in files])
-        os.rmdir(path)
 
 if __name__ == '__main__':
 
@@ -65,25 +60,24 @@ if __name__ == '__main__':
         if reduction == 'int':
             func = Integration.integrate_parallel
             comb = Integration.combine_parallel
-            path = 'integration'
+            inst = Integration(rp.plan)
         elif reduction == 'norm':
             func = Normalization.normalize_parallel
             comb = Normalization.combine_parallel
-            path = 'normalization'
+            inst = Normalization(rp.plan)
 
-        output = os.path.join(rp.plan['OutputPath'], path)
-        if not os.path.exists(output):
-            os.mkdir(output)
+        inst.create_directories()
 
-        output = os.path.join(rp.plan['OutputPath'], path, 'plots')
-        if os.path.exists(output):
-            delete_directory(output)
-        os.mkdir(output)
+        grouping_file = inst.get_diagnostic_file('grouping', '.xml')
 
-        output = os.path.join(rp.plan['OutputPath'], path, 'diagnostics')
-        if os.path.exists(output):
-            delete_directory(output)
-        os.mkdir(output)
+        data = DataModel(beamlines[rp.plan['Instrument']])
+        data.update_raw_path(rp.plan)
+
+        if data.laue:
+            data.preprocess_detectors()
+            data.create_grouping(grouping_file, rp.plan.get('Grouping'))
+            mtd.remove('detectors')
+            rp.plan['GroupingFile'] = grouping_file
 
         pt = ParallelTasks(func, comb)
 

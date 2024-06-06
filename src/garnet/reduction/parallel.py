@@ -4,9 +4,11 @@ import multiprocessing
 multiprocessing.set_start_method('spawn', force=True)
 
 import numpy as np
+# np.seterr(divide='ignore', invalid='ignore')
 
 from mantid import config
 config['Q.convention'] = 'Crystallography'
+# config.setLogLevel(0, quiet=True)
 
 class ParallelTasks:
 
@@ -31,6 +33,8 @@ class ParallelTasks:
 
         runs = plan['Runs']
 
+        pool = multiprocessing.Pool(processes=n_proc)
+
         split = [split.tolist() for split in np.array_split(runs, n_proc)]
 
         join_args = [(plan, s, proc) for proc, s in enumerate(split)]
@@ -42,10 +46,10 @@ class ParallelTasks:
         os.environ['OMP_NUM_THREADS'] = '1'
         os.environ['TBB_THREAD_ENABLED'] = '0'
 
-        with multiprocessing.get_context('spawn').Pool(n_proc) as pool:
-            self.results = pool.starmap(self.safe_function_wrapper, join_args)
-            pool.close()
-            pool.join()
+        self.results = pool.starmap(self.safe_function_wrapper, join_args)
+
+        pool.close()
+        pool.join()
 
         config['MultiThreaded.MaxCores'] == '4'
         os.environ.pop('OPENBLAS_NUM_THREADS')

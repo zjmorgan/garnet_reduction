@@ -1,5 +1,7 @@
 import os
 import yaml
+import shutil
+import concurrent.futures
 
 from garnet.config.instruments import beamlines
 
@@ -17,19 +19,138 @@ def save_YAML(output, filename):
 
     Parameters
     ----------
-    output : TYPE
-        DESCRIPTION.
+    output : str
+        Name of file.
     filename : str
         Output file name.
-
-    Returns
-    -------
-    None.
 
     """
     with open(filename, 'w') as f:
 
         yaml.dump(output, f, Dumper=Dumper, sort_keys=False)
+
+def delete_directory(path):
+    """
+    Fast removal of nonempty directories.
+
+    Parameters
+    ----------
+    path : str
+        Directory to remove.
+
+    """
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        for root, dirs, files in os.walk(path, topdown=False):
+            executor.map(os.remove,
+                         [os.path.join(root, name) for name in files])
+        shutil.rmtree(path, ignore_errors=True)
+
+class SubPlan:
+
+    def __init__(self, plan):
+
+        self.plan = plan
+        self.output = 'test'
+        self.proc = 0
+
+    def create_directories(self):
+
+        output = self.get_output_path()
+        if not os.path.exists(output):
+            os.mkdir(output)
+
+        for output in [self.get_plot_path(), self.get_diagnostic_path()]:
+            if os.path.exists(output):
+                delete_directory(output)
+            os.mkdir(output)
+
+    def get_output_file(self, ext='.nxs'):
+        """
+        Output file.
+
+        Returns
+        -------
+        output_file : str
+            Output file.
+
+        """
+
+        output_file = os.path.join(self.get_output_path(),
+                                   self.plan['OutputName']+ext)
+
+        return output_file
+
+    def get_plot_file(self, name, ext='.png'):
+        """
+        Plot file.
+
+        Returns
+        -------
+        name : str
+            Name to use for file.
+        plot_file : str
+            Path name to save plots file.
+
+        """
+
+        return os.path.join(self.get_plot_path(), name+ext)
+
+    def get_diagnostic_file(self, name, ext='.nxs'):
+        """
+        Diagnostic file.
+
+        Returns
+        -------
+        name : str
+            Name to use for file.
+        diag_file : str
+            Path name to save diagnostics file.
+
+        """
+
+        return os.path.join(self.get_diagnostic_path(), name+ext)
+
+    def get_output_path(self):
+        """
+        Output path.
+
+        Returns
+        -------
+        output_path : str
+            Output path.
+
+        """
+
+        return os.path.join(self.plan['OutputPath'], self.output)
+
+    def get_plot_path(self):
+        """
+        Plot path.
+
+        Returns
+        -------
+        plot_path : str
+            Path to save plots file.
+
+        """
+
+        return os.path.join(self.plan['OutputPath'], self.output, 'plots')
+
+    def get_diagnostic_path(self):
+        """
+        Diagnostic path.
+
+        Returns
+        -------
+        diag_path : str
+            Path to save diagnostics file.
+
+        """
+
+        return os.path.join(self.plan['OutputPath'],
+                            self.output,
+                            'diagnostics')
 
 class ReductionPlan:
 

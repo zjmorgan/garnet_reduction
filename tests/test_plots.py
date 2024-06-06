@@ -42,18 +42,18 @@ def test_slice_plot():
     signal[(X0 % 1 == 0) & (X1 % 1 == 0) & (X2 % 1 == 0)] = 1000
 
     plot = SlicePlot(UB, W)
-    params = plot.calculate_transforms(signal, axes, ['h','k','l'], [0,0,1], 0)
-    plot.make_slice(*params)
+    plot.calculate_transforms(axes, ['h','k','l'], [0,0,1])
+    plot.make_slice(signal, 0)
     plot.save_plot(os.path.join(filepath, 'slice2.png'))
 
     plot = SlicePlot(UB, W)
-    params = plot.calculate_transforms(signal, axes, ['h','k','l'], [0,1,0], 0)
-    plot.make_slice(*params)
+    plot.calculate_transforms(axes, ['h','k','l'], [0,1,0])
+    plot.make_slice(signal, 0)
     plot.save_plot(os.path.join(filepath, 'slice1.png'))
 
     plot = SlicePlot(UB, W)
-    params = plot.calculate_transforms(signal, axes, ['h','k','l'], [1,0,0], 0)
-    plot.make_slice(*params)
+    plot.calculate_transforms(axes, ['h','k','l'], [1,0,0])
+    plot.make_slice(signal, 0)
     plot.save_plot(os.path.join(filepath, 'slice0.png'))
 
 def test_radius_plot():
@@ -78,6 +78,16 @@ def test_radius_plot():
     plot.add_sphere(radius, *vals)
 
     plot.save_plot(os.path.join(filepath, 'sphere.png'))
+    
+def test_init_peak_plot():
+    
+    plot = PeakPlot()
+
+    file = os.path.join(filepath, 'ellipsoid_init.png')
+
+    plot.save_plot(file)
+
+    assert os.path.exists(file)
 
 def test_peak_plot():
 
@@ -86,10 +96,10 @@ def test_peak_plot():
     nx, ny, nz = 21, 24, 29
 
     Qx_min, Qx_max = 0, 2
-    Qy_min, Qy_max = -1.9, 2.1
+    Qy_min, Qy_max = -0.9, 3.1
     Qz_min, Qz_max = -3.2, 0.8
 
-    Q0_x, Q0_y, Q0_z = 1.1, 0.1, -1.2
+    Q0_x, Q0_y, Q0_z = 1.1, 1.0, -1.2
 
     sigma_x, sigma_y, sigma_z = 0.15, 0.25, 0.1
     rho_yz, rho_xz, rho_xy = 0.5, -0.1, -0.12
@@ -176,10 +186,25 @@ def test_peak_plot():
 
     assert ellipsoid.volume_fraction(Qx, Qy, Qz, data, norm, *params) > 0.75
 
-    plot = PeakPlot(fitting)
+    method = 'laue'
 
+    R = np.eye(3)
+    wavelength = 3.2887
+
+    angles = 60, 0
+    goniometer = [0,0,0]
+
+    *_, binning, _ = fitting
+
+    I, sigma = ellipsoid.integrate_norm(binning, c, S, R, wavelength, method)
+
+    plot = PeakPlot(method)
+
+    plot.add_fitting(fitting)
     plot.add_ellipsoid(c, S, W, vals)
     plot.add_peak_intensity(intens, sig_noise)
+    plot.add_peak_info(wavelength, angles, goniometer)
+    # plot.add_norm(ellipsoid.integral)
 
     file = os.path.join(filepath, 'ellipsoid.png')
 

@@ -9,15 +9,18 @@ import numpy as np
 from garnet.plots.base import Pages
 from garnet.plots.volume import SlicePlot
 from garnet.reduction.data import DataModel
+from garnet.reduction.plan import SubPlan
 from garnet.reduction.crystallography import space_point, point_laue
 from garnet.config.instruments import beamlines
 
-class Normalization:
+class Normalization(SubPlan):
 
     def __init__(self, plan):
 
-        self.plan = plan
+        super(Normalization, self).__init__(plan)
+
         self.params = plan['Normalization']
+        self.output = 'normalization'
 
         self.validate_params()
 
@@ -52,13 +55,11 @@ class Normalization:
         plan['OutputName'] += '_p{}'.format(proc)
 
         instance = Normalization(plan)
+        instance.proc = proc
 
         return instance.normalize()
 
     def normalize(self):
-
-        output_file = self.get_output_file()
-        diag_file = self.get_diagnostic_file()
 
         data = DataModel(beamlines[self.plan['Instrument']])
         data.update_raw_path(self.plan)
@@ -67,13 +68,14 @@ class Normalization:
 
         if data.laue:
 
-            grouping_file = diag_file.replace('.nxs', '.xml')
+            grouping_file = self.plan['GroupingFile']
 
-            data.preprocess_detectors()
-            data.create_grouping(grouping_file, self.plan.get('Grouping'))
-            mtd.remove('detectors')
+            self.run = 0
+            self.runs = len(runs)
 
             for run in runs:
+
+                self.run += 1
 
                 data.load_data('data', self.plan['IPTS'], run)
 
@@ -88,6 +90,8 @@ class Normalization:
 
                 data.crop_for_normalization('data')
 
+                data.preprocess_detectors('data')
+
                 data.load_background(self.plan.get('BackgroundFile'), 'data')
 
                 data.group_pixels(grouping_file, 'data')
@@ -101,9 +105,13 @@ class Normalization:
                                       self.params['Extents'],
                                       self.params['Bins'],
                                       symmetry=self.params.get('Symmetry'))
+
         else:
 
             if self.plan['Instrument'] == 'WAND²':
+
+                self.runs = 1
+                self.runs += 1                
 
                 data.load_data('md',
                                self.plan['IPTS'],
@@ -127,6 +135,8 @@ class Normalization:
             else:
 
                 for run in runs:
+                    
+                    self.runs += 1
 
                     data.load_data('md',
                                    self.plan['IPTS'],
@@ -147,7 +157,9 @@ class Normalization:
                                           self.params['Bins'],
                                           symmetry=self.params.get('Symmetry'))
 
-        UB_file = output_file.replace('.nxs','.mat')
+        output_file = self.get_output_file()
+
+        UB_file = output_file.replace('.nxs', '.mat')
         data.save_UB(UB_file, 'md')
 
         data_file = self.get_file(output_file, 'data')
@@ -165,8 +177,6 @@ class Normalization:
             data.save_histograms(norm_file, 'md_bkg_norm')
 
         mtd.clear()
-
-        os.remove(grouping_file)
 
         return output_file
 
@@ -329,7 +339,7 @@ class Normalization:
         """
 
         output_file = self.get_output_file()
-        diag_file = self.get_diagnostic_file()
+        diag_file = self.get_diagnostic_file('volume')
 
         data = DataModel(beamlines[self.plan['Instrument']])
         data.update_raw_path(self.plan)
@@ -387,36 +397,26 @@ class Normalization:
         signal, error, *_ = data.extract_bin_info('result')
         UB, W, titles, axes = data.extract_axis_info('result')
 
-        plot_path = self.get_plot_path()
-
         for i, vals in enumerate(axes):
 
             norm = np.zeros(3, dtype=int)
             norm[i] = 1
 
-            plot_name = 'slice_{}.pdf'.format(titles[i].replace(' ', ''))
-            pdf = Pages(os.path.join(plot_path, plot_name))
+            plot_name = 'slice_{}'.format(titles[i].replace(' ', ''))
+            pdf = Pages(self.get_plot_file(plot_name, '.pdf'))
+
+            plot = SlicePlot(UB, W)
+            plot.calculate_transforms(axes, titles, norm)
 
             for val in vals:
 
-                plot = SlicePlot(UB, W)
-
-                params = plot.calculate_transforms(signal,
-                                                   axes,
-                                                   titles,
-                                                   norm,
-                                                   val)
-
-                coords, values, labels, T, aspect = params
-
-                plot.make_slice(coords, values, labels, T, aspect)
+                plot.make_slice(signal, val)
+                pdf.add_plot(plot.fig)
 
                 if np.isclose(np.round(val, 4) % 1, 0):
-                    name = labels[2].replace(' ', '')
-                    plot_name = 'slice_{}.png'.format(name)
-                    plot.save_plot(os.path.join(plot_path, plot_name))
-
-                pdf.add_plot()
+                    name = plot.z_label.replace('.','')+'={:.3f}'.format(val)
+                    plot_name = 'slice_{}'.format(name.replace(' ', ''))
+                    plot.save_plot(self.get_plot_file(plot_name))
 
             pdf.close()
 
@@ -437,48 +437,3 @@ class Normalization:
 
             sub_output_file = self.get_file(output_file, 'sub_bkg')
             data.save_histograms(sub_output_file, 'sub', sample_logs=True)
-
-    def get_output_file(self):
-        """
-        Name of output file.
-
-        Returns
-        -------
-        output_file : str
-            Normalization output file.
-
-        """
-
-        output_file = os.path.join(self.plan['OutputPath'],
-                                   'normalization',
-                                   self.plan['OutputName']+'.nxs')
-
-        return output_file
-
-    def get_plot_path(self):
-        """
-        Plot directory.
-
-        Returns
-        -------
-        plot_path : str
-            Path name to save plots.
-
-        """
-
-        return os.path.join(self.plan['OutputPath'], 'normalization', 'plots')
-
-    def get_diagnostic_file(self):
-        """
-        Diagnostic directory.
-
-        Returns
-        -------
-        diag_path : str
-            Path name to save diagnostics.
-
-        """
-
-        return os.path.join(self.plan['OutputPath'],
-                            'normalization/diagnostics',
-                            self.plan['OutputName']+'.nxs')
