@@ -42,7 +42,17 @@ def delete_directory(path):
         os.rmdir(path)
 
 
-if __name__ == "__main__":
+def main():  # noqa: C901
+    # check command line options
+    argument_num = len(sys.argv[1:])
+    if argument_num != 3:
+        print(
+            """Please provide 3 arguments:
+            <reduction_plan_yaml> <reduction> [temp or norm or int] <num_processes> or <instrument>"""
+        )
+        return -1
+
+    # get arguments
     filename, reduction, arg = sys.argv[1], sys.argv[2], sys.argv[3]
 
     if arg.isdigit():
@@ -95,3 +105,7 @@ if __name__ == "__main__":
             n_proc = max_proc
 
         pt.run_tasks(rp.plan, n_proc)
+
+
+if __name__ == "__main__":
+    main()

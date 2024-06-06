@@ -1,13 +1,16 @@
 [project]
-name = "garnet"
+name = "garnet_reduction"
 description = "Single Crystal Graphical Advanced Reduction Neutron Event Toolkit"
 dynamic = ["version"]
 requires-python = ">=3.10"
+readme = "README.md"
 dependencies = [
     "mantidworkbench >= 6.7.20230830",
-    "pyoncat ~= 1.6"
 ]
 license = { text = "GPL3.0" }
+
+[project.urls]
+homepage = "https://github.com/neutrons/garnet_reduction/"  # if no homepage, use repo url
 
 [build-system]
 requires = [
@@ -33,22 +36,6 @@ distance-dirty = "{next_version}.dev{distance}+d{build_date:%Y%m%d%H%M}"
 [tool.versioningit.write]
 file = "src/garnet/_version.py"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-exclude = ["tests*"]
-
-[tool.setuptools.package-data]
-"*" = ["*.yml","*.yaml","*.ini"]
-
-[tool.ruff]
-line-length = 120
-select = ["A", "ARG","ASYNC","BLE","C90", "D", "E", "F", "I", "N", "UP032", "W"]
-ignore = ["D203", # conflict with D211
-          "D213", # conflict with D212
-          "ANN201", "D400", "D401", "D415", # Unnecessary
-          "ARG002", "N802", "N803","N806", "D100","D101","D102","D103", "D104","D107","D417" # put it back in the future
-          ]
-
 [tool.pytest.ini_options]
 markers = [
     "resources_intensive: mark test as using a lot of computing resources: CPU, memory, etc.",
@@ -56,3 +43,24 @@ markers = [
     "mount_hfir: mark a test as using /HFIR/ data mount",
     "datarepo: Tests that require the garnet_data submodule"
     ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yml","*.yaml","*.ini"]
+
+[project.scripts]
+garnet_reduction = "garnet.workflow:main"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["A", "ARG","ASYNC","BLE","C90", "D", "E", "F", "I", "N", "UP032", "W"]
+ignore = ["D203", # conflict with D211
+          "D213", # conflict with D212
+          "ANN201", "D400", "D401", "D415", # Unnecessary
+          "ARG002", "N802", "N803","N806", "D100","D101","D102","D103", "D104","D107","D417" # put it back in the future
+          ]

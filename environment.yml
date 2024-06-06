@@ -4,15 +4,23 @@ channels:
   - mantid/label/nightly
   - oncat
 dependencies:
-  - python
-  - numpy
-  - scipy
+  - anaconda-client
+  - boa
+  - check-wheel-contents
+  - conda-build < 4  # conda-build 24.x has a bug, missing update_index from conda_build.index
+  - conda-verify
+  - h5py
+  - lmfit
+  - mantidworkbench
   - matplotlib
   - pycifrw
   - pre-commit
   - pytest
   - pytest-qt
   - pytest-cov
-  - h5py
-  - lmfit
-  - mantidworkbench
+  - python
+  - python-build
+  - numpy
+  - scipy
+  - versioningit
+  - setuptools
