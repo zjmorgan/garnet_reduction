@@ -43,10 +43,10 @@ jobs:
           - uses: conda-incubator/setup-miniconda@v2
             with:
               activate-environment: garnet_reduction
-            #   auto-update-conda: true
-            #   channels: conda-forge, mantid/label/nightly, oncat
-            #   mamba-version: "*"
-            #   environment-file: environment.yml
+              #   auto-update-conda: true
+              channels: conda-forge, mantid/label/nightly, oncat
+              #   mamba-version: "*"
+              #   environment-file: environment.yml
           - name: Get Date
             id: get-date
             run: echo "::set-output name=today::$(/bin/date -u '+%Y%m%d')"
