@@ -71,11 +71,14 @@ jobs:
               conda env create -f environment.yml
             if: steps.cache.outputs.cache-hit != 'true'
           - name: Activate environment
-            shell: bash -l {0}
+            shell: bash -el {0}
             run: conda activate garnet_reduction
           - name: Conda info
             shell: bash -el {0}
             run: conda info
+          - name: Conda list
+            shell: bash -el {0}
+            run: conda list
           - name: building python wheel
             shell: bash -l {0}
             run: |
