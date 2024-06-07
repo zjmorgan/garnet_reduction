@@ -67,7 +67,7 @@ jobs:
 
           - name: Update environment
             run:
-              mamba env create -f environment.yml
+              conda env create -f environment.yml
             if: steps.cache.outputs.cache-hit != 'true'
 
           - name: building python wheel
