@@ -86,10 +86,10 @@ jobs:
                 steps.get-date.outputs.today }}-${{
                 hashFiles('environment.yml') }}-${{
                 env.CACHE_NUMBER }}
-              env:
-                # Increase this value to reset cache if environment.yml has not changed
-                CACHE_NUMBER: 4
-              id: cache
+            env:
+              # Increase this value to reset cache if environment.yml has not changed
+              CACHE_NUMBER: 4
+            id: cache
 
           - name: Update environment
             run:
