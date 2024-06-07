@@ -54,6 +54,12 @@ markers = [
     "datarepo: Tests that require the garnet_data submodule"
     ]
 
+[tool.coverage.report]
+exclude_lines = [
+    "except ImportError:",
+    "except ModuleNotFoundError:",
+]
+
 [tool.ruff]
 line-length = 120
 
