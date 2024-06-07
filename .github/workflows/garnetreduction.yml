@@ -41,7 +41,8 @@ jobs:
         steps:
           - uses: actions/checkout@v4
           - uses: conda-incubator/setup-miniconda@v2
-            # with:
+            with:
+              activate-environment: garnet_reduction
             #   auto-update-conda: true
             #   channels: conda-forge, mantid/label/nightly, oncat
             #   mamba-version: "*"
