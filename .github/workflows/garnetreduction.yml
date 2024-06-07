@@ -40,12 +40,12 @@ jobs:
             shell: bash -l {0}
         steps:
           - uses: actions/checkout@v4
-          - uses: conda-incubator/setup-miniconda@v2
+          - uses: actions/checkout@v4
+          - uses: mamba-org/setup-micromamba@v1
             with:
-              auto-update-conda: true
-              channels: conda-forge, mantid/label/nightly, oncat
-              mamba-version: "*"
               environment-file: environment.yml
+              cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
+              cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
           - name: building python wheel
             shell: bash -l {0}
             run: |
