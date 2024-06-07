@@ -36,14 +36,6 @@ distance-dirty = "{next_version}.dev{distance}+d{build_date:%Y%m%d%H%M}"
 [tool.versioningit.write]
 file = "src/garnet/_version.py"
 
-[tool.pytest.ini_options]
-markers = [
-    "resources_intensive: mark test as using a lot of computing resources: CPU, memory, etc.",
-    "mount_sns: mark a test as using /SNS/ data mount",
-    "mount_hfir: mark a test as using /HFIR/ data mount",
-    "datarepo: Tests that require the garnet_data submodule"
-    ]
-
 [tool.setuptools.packages.find]
 where = ["src"]
 exclude = ["tests*"]
@@ -53,6 +45,14 @@ exclude = ["tests*"]
 
 [project.scripts]
 garnet_reduction = "garnet.workflow:main"
+
+[tool.pytest.ini_options]
+markers = [
+    "resources_intensive: mark test as using a lot of computing resources: CPU, memory, etc.",
+    "mount_sns: mark a test as using /SNS/ data mount",
+    "mount_hfir: mark a test as using /HFIR/ data mount",
+    "datarepo: Tests that require the garnet_data submodule"
+    ]
 
 [tool.ruff]
 line-length = 120
