@@ -69,7 +69,7 @@ jobs:
           - name: Create environment
             shell: bash -l {0}
             run:
-              conda env create -f environment.yml
+              conda env update --name garnet_reduction -f environment.yml
             if: steps.cache.outputs.cache-hit != 'true'
           - name: Activate environment
             shell: bash -el {0}
