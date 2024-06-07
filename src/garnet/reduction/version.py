@@ -1,6 +1,6 @@
 """Module to load the version created by versioningit
 
-Will fall back to a default it shiver is not installed
+Will fall back to a default it garnet_reduction is not installed
 """
 
 try:
