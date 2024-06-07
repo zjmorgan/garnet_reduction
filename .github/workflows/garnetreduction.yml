@@ -42,10 +42,7 @@ jobs:
           - uses: conda-incubator/setup-miniconda@v2
             with:
               auto-update-conda: true
-              channels:
-                - conda-forge
-                - mantid/label/nightly
-                - oncat
+              channels: conda-forge, mantid/label/nightly, oncat
               mamba-version: "*"
               environment-file: environment.yml
               cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
