@@ -42,15 +42,7 @@ def delete_directory(path):
         os.rmdir(path)
 
 
-if __name__ == "__main__":
-    filename, reduction, arg = sys.argv[1], sys.argv[2], sys.argv[3]
-
-    if arg.isdigit():
-        n_proc = int(arg)
-    else:
-        instrument = inst_dict[arg.lower()]
-        assert filename.endswith(".yaml")
-
+def run_reduction(filename, reduction, instrument, n_proc):
     rp = ReductionPlan()
 
     if reduction == "temp":
@@ -95,3 +87,31 @@ if __name__ == "__main__":
             n_proc = max_proc
 
         pt.run_tasks(rp.plan, n_proc)
+
+
+def main(args):
+    # check command line options
+    argument_num = len(args)
+    if argument_num != 3:
+        print(
+            """Please provide 3 arguments:
+            <reduction_plan_yaml> <reduction> [temp or norm or int] <num_processes> or <instrument>"""
+        )
+        sys.exit(-1)
+
+    # get arguments
+    filename, reduction, arg = args[0], args[1], args[2]
+    instrument = ""
+    n_proc = None
+    if arg.isdigit():
+        n_proc = int(arg)
+    else:
+        instrument = inst_dict[arg.lower()]
+        assert filename.endswith(".yaml")
+
+    run_reduction(filename, reduction, instrument, n_proc)
+    sys.exit()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
