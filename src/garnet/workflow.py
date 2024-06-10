@@ -89,8 +89,9 @@ def run_reduction(filename, reduction, instrument, n_proc):
         pt.run_tasks(rp.plan, n_proc)
 
 
-def main(args):
+def main():
     # check command line options
+    args = sys.argv[1:]
     argument_num = len(args)
     if argument_num != 3:
         print(
@@ -114,4 +115,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
