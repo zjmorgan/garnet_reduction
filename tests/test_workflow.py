@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 
 import garnet.workflow
 import pytest
@@ -19,6 +20,7 @@ def test_template(tmpdir):
 
 def test_main_few_args():
     main_args = ["int", 4]
+    sys.argv.append(main_args)
     with pytest.raises(SystemExit) as excinfo:
-        main(main_args)
+        main()
     assert excinfo.value.code == -1
